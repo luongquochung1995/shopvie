@@ -1,0 +1,134 @@
+<ng-container *transloco="let t; prefix: 'checkout'">
+  <h1 class="mb-3 text-xl font-medium text-brand-500">{{ t('title') }}</h1>
+
+  @if (preview(); as p) {
+    <div class="flex flex-col gap-3">
+      <!-- Địa chỉ nhận hàng -->
+      <section class="rounded-sm bg-white p-4 shadow-sm md:p-6" [attr.aria-label]="t('address')">
+        <h2 class="mb-3 flex items-center gap-2 text-lg text-brand-500">
+          <i class="pi pi-map-marker" aria-hidden="true"></i>{{ t('address') }}
+        </h2>
+        @if (p.address; as a) {
+          <div class="flex flex-col gap-2 text-sm sm:flex-row sm:items-center">
+            <b>{{ a.receiverName }} ({{ a.phone }})</b>
+            <span class="flex-1 text-gray-700">{{ addressLine() }}</span>
+            <button type="button" class="self-start text-blue-600" (click)="openAddressPicker()">{{ t('change') }}</button>
+          </div>
+        } @else {
+          <div class="flex flex-wrap items-center gap-3 text-sm">
+            <span class="text-gray-600">{{ t('noAddress') }}</span>
+            <button pButton type="button" size="small" (click)="addressDialog.set('new')">{{ t('addAddress') }}</button>
+          </div>
+        }
+      </section>
+
+      <!-- Sản phẩm theo shop -->
+      @for (group of p.groups; track group.shop.id) {
+        <section class="rounded-sm bg-white shadow-sm" [attr.aria-label]="group.shop.name">
+          <h2 class="flex items-center gap-2 border-b border-gray-100 px-4 py-3 font-medium md:px-6">
+            <i class="pi pi-shop text-gray-500" aria-hidden="true"></i>{{ group.shop.name }}
+          </h2>
+          <ul class="divide-y divide-gray-50 px-4 md:px-6">
+            @for (line of group.items; track line.variantId) {
+              <li class="flex gap-3 py-3 text-sm" [class.opacity-60]="!line.available">
+                <span class="size-14 shrink-0 overflow-hidden bg-gray-50">
+                  @if (line.imageUrl) {
+                    <img [src]="line.imageUrl" alt="" loading="lazy" class="size-full object-cover" />
+                  }
+                </span>
+                <div class="min-w-0 flex-1">
+                  <a [routerLink]="['/p', line.productSlug]" class="line-clamp-1 hover:text-brand-500">{{ line.productName }}</a>
+                  @if (line.variantName) {
+                    <p class="text-gray-500">{{ 'cart.variant' | transloco: { name: line.variantName } }}</p>
+                  }
+                  @if (!line.available) {
+                    <p class="font-medium text-red-600">
+                      {{ line.stock === 0 ? ('cart.soldOut' | transloco) : ('cart.notEnoughStock' | transloco: { count: line.stock }) }}
+                    </p>
+                  }
+                </div>
+                <div class="grid shrink-0 grid-cols-[5rem_2.5rem_6rem] items-start text-right">
+                  <span>{{ line.unitPrice | vnd }}</span>
+                  <span class="text-gray-500">×{{ line.quantity }}</span>
+                  <span class="font-medium">{{ line.lineTotal | vnd }}</span>
+                </div>
+              </li>
+            }
+          </ul>
+          <div class="grid gap-3 border-t border-dashed border-gray-200 bg-brand-50/40 px-4 py-3 text-sm md:grid-cols-2 md:px-6">
+            <label class="flex items-center gap-2">
+              <span class="shrink-0 text-gray-600">{{ t('note') }}</span>
+              <input type="text" maxlength="500" class="min-w-0 flex-1 rounded-sm border border-gray-300 px-2 py-1.5"
+                     [placeholder]="t('notePlaceholder')" [ngModel]="notes()[group.shop.id] || ''"
+                     (ngModelChange)="setNote(group.shop.id, $event)" />
+            </label>
+            <div class="flex items-center justify-between md:justify-end md:gap-6">
+              <span class="text-gray-600">{{ t('shipping') }}</span>
+              <span>{{ group.shippingFee | vnd }}</span>
+            </div>
+          </div>
+          <p class="border-t border-gray-100 px-4 py-3 text-right text-sm md:px-6">
+            {{ t('shopTotal', { count: group.items.length }) }}
+            <b class="pl-2 text-lg font-medium text-brand-500">{{ group.total | vnd }}</b>
+          </p>
+        </section>
+      }
+
+      <!-- Thanh toán -->
+      <section class="rounded-sm bg-white shadow-sm" [attr.aria-label]="t('payment')">
+        <div class="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-4 md:px-6">
+          <h2 class="text-lg">{{ t('payment') }}</h2>
+          @for (m of p.paymentMethods; track m) {
+            <span class="rounded-sm border border-brand-500 px-3 py-1 text-sm text-brand-500">{{ t('methods.' + m) }}</span>
+          }
+        </div>
+        <dl class="ml-auto grid max-w-sm grid-cols-[1fr_auto] gap-x-6 gap-y-2 px-4 py-4 text-sm md:px-6">
+          <dt class="text-gray-600">{{ t('subtotal') }}</dt>
+          <dd class="text-right">{{ p.subtotal | vnd }}</dd>
+          <dt class="text-gray-600">{{ t('shippingTotal') }}</dt>
+          <dd class="text-right">{{ p.shippingFee | vnd }}</dd>
+          <dt class="text-gray-600">{{ t('grandTotal') }}</dt>
+          <dd class="text-right text-2xl font-medium text-brand-500">{{ p.total | vnd }}</dd>
+        </dl>
+        <div class="flex flex-col items-stretch gap-3 border-t border-dashed border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between md:px-6">
+          @if (p.hasUnavailableItems) {
+            <p class="text-sm text-red-600">
+              {{ t('unavailableHint') }} <a routerLink="/cart" class="underline">{{ t('backToCart') }}</a>
+            </p>
+          } @else {
+            <p class="text-xs text-gray-500">{{ t('terms', { count: itemCount() }) }}</p>
+          }
+          <button pButton type="button" class="justify-center px-12" [disabled]="placing() || loading() || !p.address || p.hasUnavailableItems"
+                  (click)="placeOrder()">{{ t(placing() ? 'placing' : 'placeOrder') }}</button>
+        </div>
+      </section>
+    </div>
+  } @else if (loading()) {
+    <p class="py-12 text-center text-gray-500">{{ 'common.loading' | transloco }}</p>
+  }
+
+  <p-dialog [header]="t(addressDialog() === 'new' ? 'newAddress' : 'pickAddress')" [visible]="addressDialog() !== null"
+            (visibleChange)="!$event && addressDialog.set(null)" [modal]="true" [draggable]="false"
+            [style]="{ width: '36rem' }" [breakpoints]="{ '640px': '95vw' }">
+    @if (addressDialog() === 'pick') {
+      <ul class="divide-y divide-gray-100">
+        @for (a of addresses(); track a.id) {
+          <li>
+            <button type="button" class="flex w-full flex-col items-start gap-1 py-3 text-left text-sm hover:bg-gray-50"
+                    [class.text-brand-500]="a.id === preview()?.address?.id" (click)="chooseAddress(a)">
+              <span><b>{{ a.receiverName }}</b> <span class="text-gray-500">| {{ a.phone }}</span>
+                @if (a.isDefault) { <span class="ml-2 border border-brand-500 px-1 text-xs text-brand-500">{{ 'address.default' | transloco }}</span> }
+              </span>
+              <span class="text-gray-500">{{ lineOf(a) }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+      <button pButton type="button" [outlined]="true" size="small" class="mt-3" (click)="addressDialog.set('new')">
+        <i class="pi pi-plus" aria-hidden="true"></i> {{ t('addAddress') }}
+      </button>
+    } @else if (addressDialog() === 'new') {
+      <app-address-form [saving]="savingAddress()" (saved)="createAddress($event)" (cancelled)="addressDialog.set(null)" />
+    }
+  </p-dialog>
+</ng-container>

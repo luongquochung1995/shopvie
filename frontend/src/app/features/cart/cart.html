@@ -1,0 +1,105 @@
+<ng-container *transloco="let t; prefix: 'cart'">
+  <h1 class="mb-3 flex items-center gap-2 text-xl font-medium text-brand-500">
+    <i class="pi pi-shopping-cart" aria-hidden="true"></i>{{ t('title') }}
+  </h1>
+
+  @if (cart(); as c) {
+    @if (c.shops.length === 0) {
+      <div class="rounded-sm bg-white shadow-sm">
+        <app-empty-state [title]="t('empty')" icon="pi-shopping-cart">
+          <a pButton routerLink="/" class="mt-2">{{ t('shopNow') }}</a>
+        </app-empty-state>
+      </div>
+    } @else {
+      <!-- Tiêu đề cột (desktop) -->
+      <div class="mb-3 hidden grid-cols-[2.5rem_1fr_8rem_9rem_8rem_5rem] items-center rounded-sm bg-white px-4 py-3 text-sm text-gray-500 shadow-sm md:grid">
+        <input type="checkbox" class="size-4 accent-brand-500" [checked]="allSelected()" [disabled]="busy()"
+               [attr.aria-label]="t('selectAll')" (change)="toggleAll($any($event.target).checked)" />
+        <span class="text-gray-800">{{ t('product') }}</span>
+        <span class="text-center">{{ t('unitPrice') }}</span>
+        <span class="text-center">{{ t('quantity') }}</span>
+        <span class="text-center">{{ t('amount') }}</span>
+        <span class="text-center">{{ t('actions') }}</span>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        @for (group of c.shops; track group.shop.id) {
+          <section class="rounded-sm bg-white shadow-sm" [attr.aria-label]="group.shop.name">
+            <header class="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
+              <input type="checkbox" class="size-4 accent-brand-500" [checked]="shopSelected(group)" [disabled]="busy()"
+                     [attr.aria-label]="t('selectShop', { shop: group.shop.name })"
+                     (change)="toggleShop(group, $any($event.target).checked)" />
+              <i class="pi pi-shop text-gray-500" aria-hidden="true"></i>
+              <span class="font-medium">{{ group.shop.name }}</span>
+            </header>
+            <ul class="divide-y divide-gray-100">
+              @for (item of group.items; track item.id) {
+                <li class="grid grid-cols-[2.5rem_1fr] gap-y-2 px-4 py-4 md:grid-cols-[2.5rem_1fr_8rem_9rem_8rem_5rem] md:items-center"
+                    [class.opacity-60]="!item.available">
+                  <input type="checkbox" class="size-4 accent-brand-500" [checked]="item.selected && item.available"
+                         [disabled]="busy() || !item.available" [attr.aria-label]="t('selectItem', { name: item.productName })"
+                         (change)="toggleItem(item, $any($event.target).checked)" />
+                  <div class="flex min-w-0 gap-3">
+                    <a [routerLink]="['/p', item.productSlug]" class="size-20 shrink-0 overflow-hidden border border-gray-100 bg-gray-50">
+                      @if (item.imageUrl) {
+                        <img [src]="item.imageUrl" alt="" loading="lazy" class="size-full object-cover" />
+                      }
+                    </a>
+                    <div class="min-w-0 text-sm">
+                      <a [routerLink]="['/p', item.productSlug]" class="line-clamp-2 hover:text-brand-500">{{ item.productName }}</a>
+                      @if (item.variantName) {
+                        <p class="mt-1 text-gray-500">{{ t('variant', { name: item.variantName }) }}</p>
+                      }
+                      @if (!item.available) {
+                        <p class="mt-1 font-medium text-red-600">
+                          {{ item.stock === 0 ? t('soldOut') : t('notEnoughStock', { count: item.stock }) }}
+                        </p>
+                      }
+                      <!-- Mobile: giá + số lượng nằm dưới tên -->
+                      <p class="mt-1 font-medium text-brand-500 md:hidden">{{ item.unitPrice | vnd }}</p>
+                    </div>
+                  </div>
+                  <span class="hidden text-center text-sm md:block">{{ item.unitPrice | vnd }}</span>
+                  <div class="col-start-2 flex items-center justify-between md:col-start-auto md:justify-center">
+                    <app-quantity-stepper [value]="item.quantity" [max]="item.stock > 0 ? item.stock : item.quantity"
+                                          [disabled]="busy()" (valueChange)="changeQuantity(item, $event)" />
+                    <button type="button" class="text-sm text-gray-600 hover:text-red-600 md:hidden" [disabled]="busy()"
+                            (click)="remove([item.id])">{{ t('delete') }}</button>
+                  </div>
+                  <span class="hidden text-center text-sm font-medium text-brand-500 md:block">{{ item.lineTotal | vnd }}</span>
+                  <button type="button" class="hidden text-sm hover:text-red-600 md:block" [disabled]="busy()"
+                          (click)="remove([item.id])">{{ t('delete') }}</button>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+      </div>
+
+      <!-- Thanh thanh toán dính đáy màn hình khi cuộn danh sách -->
+      <div class="sticky bottom-0 z-30 mt-3 rounded-sm border-t border-gray-200 bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+        <div class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" class="size-4 accent-brand-500" [checked]="allSelected()" [disabled]="busy()"
+                   (change)="toggleAll($any($event.target).checked)" />
+            {{ t('selectAllCount', { count: c.itemCount }) }}
+          </label>
+          <button type="button" class="hover:text-red-600 disabled:opacity-40" [disabled]="busy() || selectedIds().length === 0"
+                  (click)="remove(selectedIds())">{{ t('deleteSelected') }}</button>
+          <div class="ml-auto flex items-center gap-3">
+            <span class="text-right">
+              {{ t('total', { count: c.selectedQuantity }) }}
+              <b class="block text-xl font-medium text-brand-500 sm:inline sm:pl-1">{{ c.selectedSubtotal | vnd }}</b>
+            </span>
+            <button pButton type="button" class="px-8 sm:px-12" [disabled]="busy() || c.selectedQuantity === 0"
+                    (click)="checkout()">{{ t('checkout') }}</button>
+          </div>
+        </div>
+      </div>
+    }
+  } @else if (loadFailed()) {
+    <app-empty-state [title]="t('loadError')" [description]="'common.tryAgainLater' | transloco" icon="pi-exclamation-circle" />
+  } @else {
+    <p class="py-12 text-center text-gray-500">{{ 'common.loading' | transloco }}</p>
+  }
+</ng-container>

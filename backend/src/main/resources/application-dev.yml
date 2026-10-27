@@ -1,0 +1,35 @@
+# Profile dev: đọc biến môi trường từ file .env ở thư mục gốc repo (chạy từ backend/) hoặc thư mục hiện tại.
+spring:
+  config:
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:.env[.properties]
+  jpa:
+    show-sql: false
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  auth:
+    # Dev chạy HTTP nên cookie không thể gắn cờ Secure
+    refresh-cookie-secure: false
+  dev-seed:
+    enabled: true
+  payment:
+    # Dev: cổng thanh toán giả lập của ShopVi thay trang VNPay/MoMo; callback vẫn ký bằng key bên dưới
+    # (đặt VNPAY_*/MOMO_* trong .env và sandbox-gateway=false để dùng sandbox thật)
+    sandbox-gateway: ${PAYMENT_SANDBOX_GATEWAY:true}
+    vnpay:
+      tmn-code: ${VNPAY_TMN_CODE:SHOPVIDEV}
+      hash-secret: ${VNPAY_HASH_SECRET:shopvi-dev-vnpay-secret}
+    momo:
+      partner-code: ${MOMO_PARTNER_CODE:SHOPVIDEV}
+      access-key: ${MOMO_ACCESS_KEY:shopvi-dev-access}
+      secret-key: ${MOMO_SECRET_KEY:shopvi-dev-momo-secret}
+
+logging:
+  level:
+    com.shopvi: DEBUG

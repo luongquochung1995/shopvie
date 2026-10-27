@@ -1,0 +1,39 @@
+<footer *transloco="let t; prefix: 'footer'" class="mt-8 border-t-4 border-brand-500 bg-white text-sm text-gray-600">
+  <div class="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-8 md:grid-cols-4">
+    <section>
+      <h2 class="mb-3 font-semibold uppercase text-gray-800">{{ t('support.title') }}</h2>
+      <ul class="space-y-2">
+        <li>{{ t('support.helpCenter') }}</li>
+        <li>{{ t('support.howToBuy') }}</li>
+        <li>{{ t('support.returns') }}</li>
+      </ul>
+    </section>
+    <section>
+      <h2 class="mb-3 font-semibold uppercase text-gray-800">{{ t('about.title') }}</h2>
+      <ul class="space-y-2">
+        <li>{{ t('about.intro') }}</li>
+        <li>{{ t('about.terms') }}</li>
+        <li>{{ t('about.privacy') }}</li>
+      </ul>
+    </section>
+    <section>
+      <h2 class="mb-3 font-semibold uppercase text-gray-800">{{ t('payment.title') }}</h2>
+      <ul class="space-y-2">
+        <li>{{ t('payment.cod') }}</li>
+        <li>VNPay</li>
+        <li>MoMo</li>
+      </ul>
+    </section>
+    <section>
+      <h2 class="mb-3 font-semibold uppercase text-gray-800">{{ t('follow.title') }}</h2>
+      <ul class="space-y-2">
+        <li><i class="pi pi-facebook mr-2" aria-hidden="true"></i>Facebook</li>
+        <li><i class="pi pi-instagram mr-2" aria-hidden="true"></i>Instagram</li>
+      </ul>
+    </section>
+  </div>
+  <div class="flex flex-col items-center gap-2 border-t border-gray-200 py-4 text-xs sm:flex-row sm:justify-center sm:gap-6">
+    <app-language-switcher class="md:hidden" />
+    <p>{{ t('copyright', { year: year }) }}</p>
+  </div>
+</footer>

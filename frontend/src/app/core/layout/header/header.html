@@ -1,0 +1,88 @@
+<header *transloco="let t; prefix: 'header'" class="bg-gradient-to-b from-brand-500 to-brand-400 text-white">
+  <!-- Thanh trên: chỉ hiện từ tablet trở lên -->
+  <div class="mx-auto hidden max-w-6xl items-center justify-between px-4 py-1 text-xs md:flex">
+    <a routerLink="/seller-center" class="hover:opacity-80">{{ t('sellerCenter') }}</a>
+    <nav class="flex items-center gap-4" [attr.aria-label]="t('accountNav')">
+      <app-language-switcher />
+      @if (!auth.isLoggedIn()) {
+        <span class="opacity-60" aria-hidden="true">|</span>
+        <a routerLink="/auth/register" class="hover:opacity-80">{{ t('register') }}</a>
+        <span class="opacity-60" aria-hidden="true">|</span>
+        <a routerLink="/auth/login" class="hover:opacity-80">{{ t('login') }}</a>
+      }
+    </nav>
+  </div>
+
+  <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 md:gap-8 md:py-4">
+    <a routerLink="/" class="flex shrink-0 items-center gap-2" [attr.aria-label]="t('homeLink')">
+      <i class="pi pi-shopping-bag text-2xl md:text-4xl" aria-hidden="true"></i>
+      <span class="hidden text-2xl font-semibold tracking-tight sm:inline md:text-3xl">{{ 'common.appName' | transloco }}</span>
+    </a>
+
+    <form class="flex min-w-0 flex-1 items-center gap-1 rounded-sm bg-white p-1" role="search"
+          (ngSubmit)="search()">
+      <input type="search" name="q" class="min-w-0 flex-1 px-2 py-1.5 text-gray-800 outline-none"
+             [placeholder]="t('searchPlaceholder')" [attr.aria-label]="t('searchLabel')"
+             [ngModel]="keyword()" (ngModelChange)="keyword.set($event)" />
+      <button type="submit" class="shrink-0 rounded-sm bg-brand-500 px-4 py-2 hover:bg-brand-600 md:px-6"
+              [attr.aria-label]="t('searchButton')">
+        <i class="pi pi-search" aria-hidden="true"></i>
+      </button>
+    </form>
+
+    @if (auth.user(); as user) {
+      <div class="relative shrink-0" data-user-menu>
+        <button type="button" class="flex items-center gap-1 p-1 hover:opacity-80" aria-haspopup="menu"
+                [attr.aria-label]="t('accountOf', { name: user.fullName })"
+                [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())">
+          <i class="pi pi-user text-2xl md:text-xl" aria-hidden="true"></i>
+          <span class="hidden max-w-32 truncate text-sm md:inline">{{ user.fullName }}</span>
+        </button>
+        @if (menuOpen()) {
+          <ul role="menu" class="absolute right-0 z-50 mt-2 w-52 rounded-sm bg-white py-1 text-sm text-gray-800 shadow-lg">
+            <li role="none">
+              <a role="menuitem" routerLink="/account/profile" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
+                 (click)="menuOpen.set(false)">{{ t('myAccount') }}</a>
+            </li>
+            <li role="none">
+              <a role="menuitem" routerLink="/account/addresses" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
+                 (click)="menuOpen.set(false)">{{ t('addressBook') }}</a>
+            </li>
+            <li role="none">
+              <a role="menuitem" routerLink="/account/orders" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
+                 (click)="menuOpen.set(false)">{{ t('myOrders') }}</a>
+            </li>
+            @if (user.role === 'ADMIN') {
+              <li role="none">
+                <a role="menuitem" routerLink="/admin/shops" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
+                   (click)="menuOpen.set(false)">{{ t('adminShops') }}</a>
+              </li>
+            } @else {
+              <li role="none">
+                <a role="menuitem" routerLink="/seller-center" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
+                   (click)="menuOpen.set(false)">{{ t(user.role === 'SELLER' ? 'sellerCenter' : 'openShop') }}</a>
+              </li>
+            }
+            <li role="none">
+              <button role="menuitem" type="button" class="block w-full px-4 py-2 text-left hover:bg-brand-50 hover:text-brand-500"
+                      (click)="logout()">{{ t('logout') }}</button>
+            </li>
+          </ul>
+        }
+      </div>
+    } @else {
+      <a routerLink="/auth/login" class="shrink-0 p-1 hover:opacity-80 md:hidden" [attr.aria-label]="t('login')">
+        <i class="pi pi-user text-2xl" aria-hidden="true"></i>
+      </a>
+    }
+
+    <a routerLink="/cart" class="relative shrink-0 p-1 hover:opacity-80"
+       [attr.aria-label]="cart.count() > 0 ? t('cartWithCount', { count: cart.count() }) : t('cart')">
+      <i class="pi pi-shopping-cart text-2xl md:text-3xl" aria-hidden="true"></i>
+      @if (cart.count() > 0) {
+        <span class="absolute -top-1 -right-2 min-w-5 rounded-full border-2 border-brand-500 bg-white px-1 text-center text-xs font-medium leading-4 text-brand-500"
+              aria-hidden="true">{{ cart.count() > 99 ? '99+' : cart.count() }}</span>
+      }
+    </a>
+  </div>
+</header>

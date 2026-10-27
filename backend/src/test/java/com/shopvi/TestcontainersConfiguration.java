@@ -1,0 +1,44 @@
+package com.shopvi;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.DynamicPropertyRegistrar;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
+
+/** Hạ tầng cho integration test; bỏ qua khi chạy với {@code -Dit.external=true}. */
+@TestConfiguration(proxyBeanMethods = false)
+@ConditionalOnProperty(name = "it.external", havingValue = "false", matchIfMissing = true)
+public class TestcontainersConfiguration {
+
+    @Bean
+    @ServiceConnection
+    PostgreSQLContainer<?> postgresContainer() {
+        return new PostgreSQLContainer<>(DockerImageName.parse("postgres:17"));
+    }
+
+    @Bean
+    @ServiceConnection(name = "redis")
+    GenericContainer<?> redisContainer() {
+        return new GenericContainer<>(DockerImageName.parse("redis:7")).withExposedPorts(6379);
+    }
+
+    @Bean
+    MinIOContainer minioContainer() {
+        return new MinIOContainer(DockerImageName.parse("minio/minio"))
+                .withUserName("minio")
+                .withPassword("minio-secret-123");
+    }
+
+    @Bean
+    DynamicPropertyRegistrar minioProperties(MinIOContainer minio) {
+        return registry -> {
+            registry.add("app.media.endpoint", minio::getS3URL);
+            registry.add("app.media.public-base-url", minio::getS3URL);
+        };
+    }
+}

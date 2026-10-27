@@ -1,0 +1,148 @@
+<ng-container *transloco="let t; prefix: 'productDetail'">
+@switch (state().status) {
+  @case ('not-found') {
+    <app-empty-state [title]="t('notFound')" [description]="t('notFoundHint')" icon="pi-box">
+      <a routerLink="/" class="text-brand-500">{{ 'common.continueShopping' | transloco }}</a>
+    </app-empty-state>
+  }
+  @case ('error') {
+    <app-empty-state [title]="t('loadError')" [description]="'common.tryAgainLater' | transloco" icon="pi-exclamation-circle" />
+  }
+  @case ('loading') {
+    <div class="grid animate-pulse gap-4 rounded-sm bg-white p-4 md:grid-cols-[2fr_3fr]">
+      <div class="aspect-square bg-gray-200"></div>
+      <div class="flex flex-col gap-3"><div class="h-6 w-3/4 bg-gray-200"></div><div class="h-16 bg-gray-100"></div></div>
+    </div>
+  }
+}
+
+@if (product(); as p) {
+  <nav class="mb-3 text-sm text-gray-500" [attr.aria-label]="'common.breadcrumb' | transloco">
+    <a routerLink="/" class="hover:text-brand-500">{{ 'common.appName' | transloco }}</a>
+    @for (c of p.breadcrumb; track c.id) {
+      <span class="mx-1" aria-hidden="true">›</span>
+      <a [routerLink]="['/c', c.slug]" class="hover:text-brand-500">{{ c.name }}</a>
+    }
+    <span class="mx-1" aria-hidden="true">›</span><span class="text-gray-800">{{ p.name }}</span>
+  </nav>
+
+  <article class="flex flex-col gap-4">
+    <section class="grid gap-4 rounded-sm bg-white p-3 shadow-sm md:grid-cols-[2fr_3fr] md:p-5">
+      <!-- Gallery -->
+      <div class="flex flex-col gap-2">
+        <div class="relative aspect-square overflow-hidden bg-gray-100">
+          @if (mainImage(); as img) {
+            <img [src]="img" [alt]="p.name" class="size-full object-cover" fetchpriority="high" />
+          }
+        </div>
+        <div class="flex gap-2 overflow-x-auto" role="list" [attr.aria-label]="t('images')">
+          @for (img of p.images; track img; let i = $index) {
+            <button type="button" role="listitem" class="size-16 shrink-0 overflow-hidden border-2 md:size-20"
+                    [class.border-brand-500]="img === mainImage()" [class.border-transparent]="img !== mainImage()"
+                    [attr.aria-label]="t('viewImage', { index: i + 1 })" (mouseenter)="activeImage.set(img)" (click)="activeImage.set(img)">
+              <img [src]="img" alt="" loading="lazy" class="size-full object-cover" />
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Thông tin & mua hàng -->
+      <div class="flex min-w-0 flex-col gap-4">
+        <h1 class="text-lg font-medium leading-snug md:text-xl">{{ p.name }}</h1>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          @if (p.ratingCount > 0) {
+            <span class="flex items-center gap-1 border-r border-gray-300 pr-4">
+              <span class="text-brand-500 underline">{{ p.ratingAvg }}</span>
+              <app-rating-stars [rating]="p.ratingAvg" />
+            </span>
+            <span class="border-r border-gray-300 pr-4"><b>{{ p.ratingCount | compactCount }}</b> <span class="text-gray-500"> {{ t('ratings') }}</span></span>
+          } @else {
+            <span class="border-r border-gray-300 pr-4 text-gray-500">{{ t('noRatings') }}</span>
+          }
+          <span><b>{{ p.soldCount | compactCount }}</b> <span class="text-gray-500"> {{ t('sold') }}</span></span>
+        </div>
+
+        <p class="bg-gray-50 px-4 py-3 text-2xl font-medium text-brand-500 md:text-3xl">{{ priceText() }}</p>
+
+        <dl class="grid grid-cols-[6.5rem_1fr] items-start gap-x-4 gap-y-5 text-sm md:px-4">
+          @for (opt of p.variantOptions; track opt.name) {
+            <dt class="pt-2 text-gray-500">{{ opt.name }}</dt>
+            <dd class="flex flex-wrap gap-2" role="group" [attr.aria-label]="opt.name">
+              @for (value of opt.values; track value) {
+                @let selected = selection()[opt.name] === value;
+                <button type="button" class="relative min-w-16 rounded-sm border px-3 py-1.5 transition"
+                        [class]="selected ? 'border-brand-500 text-brand-500' : 'border-gray-300 hover:border-brand-500 hover:text-brand-500'"
+                        [disabled]="!isAvailable(opt.name, value)" [class.opacity-40]="!isAvailable(opt.name, value)"
+                        [class.cursor-not-allowed]="!isAvailable(opt.name, value)"
+                        [attr.aria-pressed]="selected" (click)="select(opt.name, value)">
+                  {{ value }}
+                  @if (selected) {
+                    <i class="pi pi-check absolute -right-px -bottom-px bg-brand-500 p-0.5 text-[0.5rem] text-white" aria-hidden="true"></i>
+                  }
+                </button>
+              }
+            </dd>
+          }
+
+          <dt class="pt-1.5 text-gray-500">{{ t('quantity') }}</dt>
+          <dd class="flex flex-wrap items-center gap-4">
+            <span class="inline-flex border border-gray-300">
+              <button type="button" class="size-8 border-r border-gray-300" [attr.aria-label]="t('decrease')"
+                      [disabled]="quantity() <= 1" (click)="changeQuantity(-1)">−</button>
+              <input type="number" inputmode="numeric" class="w-14 text-center outline-none" [attr.aria-label]="t('quantity')"
+                     [value]="quantity()" (change)="setQuantity(+$any($event.target).value)" min="1" />
+              <button type="button" class="size-8 border-l border-gray-300" [attr.aria-label]="t('increase')"
+                      [disabled]="quantity() >= stock()" (click)="changeQuantity(1)">+</button>
+            </span>
+            <span class="text-gray-500">{{ t('inStock', { count: stock() }) }}</span>
+          </dd>
+        </dl>
+
+        @if (stock() === 0) {
+          <p class="text-sm text-red-600">{{ t('outOfStock') }}</p>
+        }
+        <div class="flex flex-wrap gap-3 md:px-4">
+          <button pButton type="button" [outlined]="true" class="flex-1 justify-center !bg-brand-50 sm:flex-none"
+                  [disabled]="stock() === 0 || adding()" (click)="addToCart()">
+            <i class="pi pi-cart-plus" aria-hidden="true"></i> {{ t('addToCart') }}
+          </button>
+          <button pButton type="button" class="flex-1 justify-center sm:flex-none sm:px-10" [disabled]="stock() === 0 || adding()"
+                  (click)="addToCart(true)">{{ t('buyNow') }}</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Shop -->
+    <section class="flex items-center gap-4 rounded-sm bg-white p-4 shadow-sm" [attr.aria-label]="t('shopInfo')">
+      <span class="size-14 shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 md:size-20">
+        @if (p.shop.logoUrl) {
+          <img [src]="p.shop.logoUrl" alt="" loading="lazy" class="size-full object-cover" />
+        }
+      </span>
+      <div class="min-w-0">
+        <p class="truncate font-medium">{{ p.shop.name }}</p>
+        <p class="text-sm text-gray-500"><i class="pi pi-star-fill text-amber-400" aria-hidden="true"></i> {{ t('shopRating', { rating: p.shop.ratingAvg }) }}</p>
+      </div>
+    </section>
+
+    <!-- Chi tiết & mô tả -->
+    <section class="rounded-sm bg-white p-4 shadow-sm md:p-6">
+      <h2 class="mb-4 bg-gray-50 p-3 text-lg font-medium uppercase">{{ t('specifications') }}</h2>
+      <dl class="mb-6 grid grid-cols-[9rem_1fr] gap-y-3 px-3 text-sm">
+        <dt class="text-gray-500">{{ t('category') }}</dt>
+        <dd>
+          @for (c of p.breadcrumb; track c.id) {
+            <a [routerLink]="['/c', c.slug]" class="text-brand-500">{{ c.name }}</a>@if (!$last) {<span class="mx-1">›</span>}
+          }
+        </dd>
+        @for (attr of attributes() | keyvalue; track attr.key) {
+          <dt class="text-gray-500">{{ attr.key }}</dt>
+          <dd>{{ attr.value }}</dd>
+        }
+      </dl>
+      <h2 class="mb-4 bg-gray-50 p-3 text-lg font-medium uppercase">{{ t('description') }}</h2>
+      <p class="whitespace-pre-line px-3 text-sm leading-6">{{ p.description }}</p>
+    </section>
+  </article>
+}
+</ng-container>

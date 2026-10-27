@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend-mock",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--prefix", "frontend", "ng", "serve", "--configuration", "mock", "--port", "4301"],
+      "cwd": "frontend",
+      "port": 4301
+    }
+  ]
+}

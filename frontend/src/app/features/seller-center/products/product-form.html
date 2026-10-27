@@ -1,0 +1,258 @@
+<div *transloco="let t; prefix: 'seller.productForm'" class="flex flex-col gap-4">
+  <div class="flex items-center justify-between gap-2">
+    <a routerLink="/seller-center/products" class="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-brand-500">
+      <i class="pi pi-angle-left" aria-hidden="true"></i>{{ t('back') }}
+    </a>
+    @if (loaded(); as p) {
+      @if (p.status === 'ACTIVE') {
+        <a [routerLink]="['/p', p.slug]" target="_blank" class="text-sm text-blue-600 hover:underline">
+          {{ t('viewOnShop') }} <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
+        </a>
+      }
+    }
+  </div>
+
+  @if (loadErrorKey(); as key) {
+    <p class="rounded-sm bg-white p-6 text-center text-gray-500 shadow-sm">{{ key | transloco }}</p>
+  } @else if (productId() !== null && !loaded()) {
+    <p class="rounded-sm bg-white p-6 text-center text-gray-500 shadow-sm">{{ 'common.loading' | transloco }}</p>
+  } @else {
+    @if (!shop.active()) {
+      <p class="rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800" role="status">{{ t('shopNotActive') }}</p>
+    }
+
+    <!-- Thông tin cơ bản -->
+    <section class="rounded-sm bg-white p-4 shadow-sm md:p-6" aria-labelledby="basic-info">
+      <h1 id="basic-info" class="mb-4 text-lg font-medium">
+        {{ t(productId() === null ? 'titleNew' : 'titleEdit') }}
+        @if (loaded(); as p) {
+          <span class="ml-2 align-middle text-xs font-normal text-gray-500">{{ 'productStatus.' + p.status | transloco }}</span>
+        }
+      </h1>
+
+      <div class="flex flex-col gap-4">
+        <!-- Ảnh -->
+        <div>
+          <p class="mb-2 text-sm text-gray-600">{{ t('images', { max: limits.MAX_IMAGES }) }}</p>
+          <ul class="flex flex-wrap gap-2" [attr.aria-label]="t('imagesList')">
+            @for (img of images(); track img; let i = $index) {
+              <li class="group relative size-20 overflow-hidden border border-gray-200 bg-gray-50">
+                <img [src]="img" [alt]="t('imageAlt', { index: i + 1 })" class="size-full object-cover" />
+                @if (i === 0) {
+                  <span class="absolute inset-x-0 bottom-0 bg-brand-500/90 text-center text-[10px] text-white">{{ t('cover') }}</span>
+                } @else {
+                  <button type="button" class="absolute inset-x-0 bottom-0 bg-black/50 text-[10px] text-white"
+                          (click)="makeCover(i)">{{ t('makeCover') }}</button>
+                }
+                <button type="button" class="absolute top-0 right-0 flex size-5 items-center justify-center bg-black/50 text-white"
+                        [attr.aria-label]="t('removeImage', { index: i + 1 })" (click)="removeImage(i)">
+                  <i class="pi pi-times text-[10px]" aria-hidden="true"></i>
+                </button>
+              </li>
+            }
+            @if (images().length < limits.MAX_IMAGES) {
+              <li>
+                <label class="flex size-20 cursor-pointer flex-col items-center justify-center gap-1 border border-dashed border-brand-500 text-xs text-brand-500 hover:bg-brand-50">
+                  <i class="pi" [class]="uploading() > 0 ? 'pi-spin pi-spinner' : 'pi-image'" aria-hidden="true"></i>
+                  {{ t('addImage') }}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" (change)="onFiles($event)" />
+                </label>
+              </li>
+            }
+          </ul>
+          @if (images().length < limits.MAX_IMAGES) {
+            <div class="mt-2 flex max-w-xl gap-2">
+              <input pInputText type="url" class="min-w-0 flex-1" [placeholder]="t('imageUrlPlaceholder')" [attr.aria-label]="t('imageUrlPlaceholder')"
+                     [ngModel]="imageUrlDraft()" (ngModelChange)="imageUrlDraft.set($event)" (keydown.enter)="$event.preventDefault(); addImageUrl()" />
+              <button pButton type="button" size="small" [outlined]="true" (click)="addImageUrl()">{{ t('addImageUrl') }}</button>
+            </div>
+          }
+          @if (submitted() && imagesError()) {
+            <small class="text-red-600">{{ t('imagesError') }}</small>
+          }
+        </div>
+
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">{{ t('name') }}</span>
+          <input pInputText maxlength="255" [placeholder]="t('namePlaceholder')" [ngModel]="name()" (ngModelChange)="name.set($event)" />
+          <span class="flex justify-between text-xs">
+            <small class="text-red-600">{{ submitted() && nameError() ? t('nameError') : '' }}</small>
+            <small class="text-gray-400">{{ name().length }}/255</small>
+          </span>
+        </label>
+
+        <div class="flex flex-col gap-1">
+          <label for="category" class="text-sm text-gray-600">{{ t('category') }}</label>
+          <p-select inputId="category" [options]="categoryGroups()" [group]="true" optionLabel="label" optionValue="value"
+                    optionGroupLabel="label" optionGroupChildren="items" [filter]="true" filterBy="label"
+                    [placeholder]="t('categoryPlaceholder')" [emptyFilterMessage]="'common.noResults' | transloco"
+                    styleClass="w-full" appendTo="body" [ngModel]="categoryId()" (ngModelChange)="categoryId.set($event)" />
+          @if (submitted() && categoryError()) {
+            <small class="text-red-600">{{ t('categoryError') }}</small>
+          }
+        </div>
+
+        <label class="flex flex-col gap-1">
+          <span class="text-sm text-gray-600">{{ t('description') }}</span>
+          <textarea pTextarea rows="6" maxlength="5000" [placeholder]="t('descriptionPlaceholder')"
+                    [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+        </label>
+      </div>
+    </section>
+
+    <!-- Thuộc tính -->
+    <section class="rounded-sm bg-white p-4 shadow-sm md:p-6" aria-labelledby="attributes">
+      <h2 id="attributes" class="mb-1 text-lg font-medium">{{ t('attributes') }}</h2>
+      <p class="mb-3 text-sm text-gray-500">{{ t('attributesHint') }}</p>
+      <ul class="flex flex-col gap-2">
+        @for (a of attributes(); track $index; let i = $index) {
+          <li class="flex gap-2">
+            <input pInputText class="w-2/5 min-w-0" maxlength="50" [placeholder]="t('attributeName')" [attr.aria-label]="t('attributeName')"
+                   [ngModel]="a.key" (ngModelChange)="updateAttribute(i, 'key', $event)" />
+            <input pInputText class="min-w-0 flex-1" maxlength="200" [placeholder]="t('attributeValue')" [attr.aria-label]="t('attributeValue')"
+                   [ngModel]="a.value" (ngModelChange)="updateAttribute(i, 'value', $event)" />
+            <button pButton type="button" [text]="true" severity="secondary" [attr.aria-label]="t('removeAttribute')"
+                    (click)="removeAttribute(i)"><i class="pi pi-trash" aria-hidden="true"></i></button>
+          </li>
+        }
+      </ul>
+      <button pButton type="button" size="small" [outlined]="true" class="mt-2" (click)="addAttribute()">
+        <i class="pi pi-plus" aria-hidden="true"></i> {{ t('addAttribute') }}
+      </button>
+    </section>
+
+    <!-- Phân loại hàng & giá/kho -->
+    <section class="rounded-sm bg-white p-4 shadow-sm md:p-6" aria-labelledby="sales-info">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 id="sales-info" class="text-lg font-medium">{{ t('salesInfo') }}</h2>
+        <label class="flex items-center gap-2 text-sm">
+          <p-toggleswitch [ngModel]="hasVariants()" (ngModelChange)="toggleVariants($event)" inputId="has-variants" />
+          {{ t('enableVariants') }}
+        </label>
+      </div>
+
+      @if (hasVariants()) {
+        <div class="mb-4 flex flex-col gap-3">
+          @for (group of options(); track $index; let g = $index) {
+            <fieldset class="rounded-sm bg-gray-50 p-3">
+              <legend class="sr-only">{{ t('optionGroup', { index: g + 1 }) }}</legend>
+              <div class="mb-2 flex items-center gap-2">
+                <input pInputText class="min-w-0 flex-1 sm:max-w-xs" maxlength="30" [placeholder]="t('optionNamePlaceholder')"
+                       [attr.aria-label]="t('optionName', { index: g + 1 })" [ngModel]="group.name"
+                       (ngModelChange)="renameOptionGroup(g, $event)" />
+                <button pButton type="button" [text]="true" severity="secondary" [attr.aria-label]="t('removeOptionGroup', { index: g + 1 })"
+                        (click)="removeOptionGroup(g)"><i class="pi pi-times" aria-hidden="true"></i></button>
+              </div>
+              <ul class="mb-2 flex flex-wrap gap-2" [attr.aria-label]="t('optionValues', { index: g + 1 })">
+                @for (value of group.values; track value; let v = $index) {
+                  <li class="flex items-center gap-1 rounded-sm border border-gray-300 bg-white py-0.5 pr-1 pl-2 text-sm">
+                    {{ value }}
+                    <button type="button" class="flex size-5 items-center justify-center text-gray-400 hover:text-red-600"
+                            [attr.aria-label]="t('removeValue', { value })" (click)="removeValue(g, v)">
+                      <i class="pi pi-times text-[10px]" aria-hidden="true"></i>
+                    </button>
+                  </li>
+                }
+              </ul>
+              @if (group.values.length < limits.MAX_OPTION_VALUES) {
+                <div class="flex gap-2">
+                  <input pInputText class="min-w-0 flex-1 sm:max-w-xs" maxlength="200" [placeholder]="t('valuePlaceholder')"
+                         [attr.aria-label]="t('newValue', { index: g + 1 })" [ngModel]="valueDrafts()[g]"
+                         (ngModelChange)="setValueDraft(g, $event)" (keydown.enter)="addValues(g, $event)" />
+                  <button pButton type="button" size="small" [outlined]="true" (click)="addValues(g)">{{ t('addValue') }}</button>
+                </div>
+              }
+              @if (submitted() && problems()[g]; as problem) {
+                <small class="text-red-600">{{ t('problem.' + problem, { max: limits.MAX_OPTION_VALUES }) }}</small>
+              }
+            </fieldset>
+          }
+          @if (options().length < limits.MAX_OPTION_GROUPS) {
+            <button pButton type="button" size="small" [outlined]="true" class="self-start" (click)="addOptionGroup()">
+              <i class="pi pi-plus" aria-hidden="true"></i> {{ t('addOptionGroup') }}
+            </button>
+          }
+          @if (submitted() && optionGroupsError()) {
+            <small class="text-red-600">{{ t('optionGroupsError') }}</small>
+          }
+          @if (tooManyVariants()) {
+            <small class="text-red-600">{{ t('tooManyVariants', { max: limits.MAX_VARIANTS }) }}</small>
+          }
+        </div>
+
+        @if (rows().length > 1) {
+          <div class="mb-3 flex flex-wrap items-end gap-2 rounded-sm border border-dashed border-gray-200 p-3">
+            <label class="flex flex-col gap-1 text-xs text-gray-600">
+              {{ t('price') }}
+              <input pInputText inputmode="numeric" class="w-36"
+                     [ngModel]="bulkPrice()" (ngModelChange)="bulkPrice.set(parseAmount($event))" />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-gray-600">
+              {{ t('stock') }}
+              <input pInputText inputmode="numeric" class="w-28"
+                     [ngModel]="bulkStock()" (ngModelChange)="bulkStock.set(parseAmount($event))" />
+            </label>
+            <button pButton type="button" size="small" (click)="applyBulk()">{{ t('applyAll') }}</button>
+          </div>
+        }
+      }
+
+      <!-- Bảng SKU: mỗi tổ hợp một dòng -->
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[34rem] text-sm">
+          <thead class="bg-gray-50 text-left text-xs text-gray-500">
+            <tr>
+              @if (hasVariants()) {
+                <th class="px-2 py-2 font-normal">{{ t('variant') }}</th>
+              }
+              <th class="px-2 py-2 font-normal">{{ t('price') }} (₫)</th>
+              <th class="px-2 py-2 font-normal">{{ t('stock') }}</th>
+              <th class="px-2 py-2 font-normal">{{ t('sku') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.key; let i = $index) {
+              <tr class="border-b border-gray-50 align-top">
+                @if (hasVariants()) {
+                  <td class="px-2 py-2">{{ rowLabel(row) || '—' }}</td>
+                }
+                <td class="px-2 py-2">
+                  <input pInputText inputmode="numeric" class="w-full min-w-28"
+                         [attr.aria-label]="t('priceOf', { variant: rowLabel(row) || name() })"
+                         [ngModel]="row.price" (ngModelChange)="updateRow(i, 'price', $event)" />
+                  @if (submitted() && priceError(row.price)) {
+                    <small class="text-red-600">{{ t('priceError', { min: limits.MIN_PRICE }) }}</small>
+                  }
+                </td>
+                <td class="px-2 py-2">
+                  <input pInputText inputmode="numeric" class="w-full min-w-20"
+                         [attr.aria-label]="t('stockOf', { variant: rowLabel(row) || name() })"
+                         [ngModel]="row.stock" (ngModelChange)="updateRow(i, 'stock', $event)" />
+                  @if (submitted() && stockError(row.stock)) {
+                    <small class="text-red-600">{{ t('stockError') }}</small>
+                  }
+                </td>
+                <td class="px-2 py-2">
+                  <input pInputText class="w-full min-w-28" maxlength="64" [placeholder]="t('skuPlaceholder')"
+                         [attr.aria-label]="t('skuOf', { variant: rowLabel(row) || name() })"
+                         [ngModel]="row.sku" (ngModelChange)="updateRow(i, 'sku', $event)" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Nút lưu (dính đáy màn hình trên mobile) -->
+    <div class="sticky bottom-0 z-10 -mx-2 flex justify-end gap-2 border-t border-gray-200 bg-white p-3 shadow-sm sm:mx-0">
+      <a pButton routerLink="/seller-center/products" [text]="true" severity="secondary">{{ t('cancel') }}</a>
+      @if (productId() === null) {
+        <button pButton type="button" [outlined]="true" [disabled]="saving() || !shop.active()" (click)="save(false)">{{ t('saveHidden') }}</button>
+        <button pButton type="button" [disabled]="saving() || !shop.active()" (click)="save(true)">{{ t(saving() ? 'saving' : 'saveAndShow') }}</button>
+      } @else {
+        <button pButton type="button" [disabled]="saving() || !shop.active()" (click)="save(true)">{{ t(saving() ? 'saving' : 'update') }}</button>
+      }
+    </div>
+  }
+</div>

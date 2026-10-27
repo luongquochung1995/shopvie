@@ -1,0 +1,21 @@
+/* Tailwind v4 tách khỏi SCSS để Sass không xử lý @import "tailwindcss".
+   Thứ tự layer: style PrimeNG nằm giữa base và utilities để class Tailwind override được component. */
+@layer theme, base, primeng, components, utilities;
+
+@import "tailwindcss";
+
+@theme {
+  /* Đồng bộ với primary trong core/theme/shopvi-preset.ts */
+  --color-brand-50: #faf2fc;
+  --color-brand-100: #f3e0f9;
+  --color-brand-200: #e4bdf2;
+  --color-brand-300: #d18ce8;
+  --color-brand-400: #b647da;
+  --color-brand-500: #9900cc;
+  --color-brand-600: #8400af;
+  --color-brand-700: #6e0093;
+  --color-brand-800: #590076;
+  --color-brand-900: #45005c;
+  --color-brand-950: #2b0039;
+  --font-sans: "Roboto", "Helvetica Neue", Arial, sans-serif;
+}
