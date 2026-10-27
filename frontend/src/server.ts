@@ -15,7 +15,17 @@ const SITE_URL = process.env['SITE_URL']?.replace(/\/$/, '');
 const SITEMAP_TTL_MS = 10 * 60 * 1000;
 
 const app = express();
-const angularApp = new AngularNodeAppEngine();
+/**
+ * Angular SSR chỉ render cho host được phép (chống SSRF qua header Host) — host lạ thì rơi về CSR, mất thẻ SEO.
+ * Danh sách: NG_ALLOWED_HOSTS (nếu đặt) hoặc host của SITE_URL + localhost. Sau nginx chỉ tin X-Forwarded-Proto/For
+ * (nginx tự đặt Host); header x-forwarded-* không được tin cũng làm Angular rơi về CSR.
+ */
+const angularApp = new AngularNodeAppEngine({
+  allowedHosts: process.env['NG_ALLOWED_HOSTS']
+    ? undefined
+    : [...(SITE_URL ? [new URL(SITE_URL).hostname] : []), 'localhost', '127.0.0.1'],
+  trustProxyHeaders: ['x-forwarded-proto', 'x-forwarded-for'],
+});
 
 // Sau reverse proxy (nginx): lấy đúng giao thức / IP gốc từ X-Forwarded-*
 app.set('trust proxy', 'loopback, linklocal, uniquelocal');

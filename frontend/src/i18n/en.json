@@ -47,7 +47,8 @@
     "adminDashboard": "Overview | ShopVie Admin",
     "adminProducts": "Products | ShopVie Admin",
     "adminUsers": "Accounts | ShopVie Admin",
-    "adminBanners": "Banners | ShopVie Admin"
+    "adminBanners": "Banners | ShopVie Admin",
+    "adminCategories": "Categories | ShopVie Admin"
   },
   "language": {
     "label": "Language",
@@ -341,7 +342,10 @@
     "CONVERSATION_NOT_FOUND": "Conversation not found",
     "CHAT_WITH_OWN_SHOP": "You cannot chat with your own shop",
     "BANNER_NOT_FOUND": "Banner not found",
-    "USER_NOT_FOUND": "Account not found"
+    "USER_NOT_FOUND": "Account not found",
+    "CATEGORY_SLUG_EXISTS": "Category slug already exists",
+    "CATEGORY_TOO_DEEP": "Categories support at most 3 levels",
+    "CATEGORY_NOT_EMPTY": "Category still has sub-categories or products"
   },
   "cart": {
     "title": "Shopping cart",
@@ -745,7 +749,8 @@
       "dashboard": "Overview",
       "products": "Products",
       "users": "Accounts",
-      "banners": "Banners"
+      "banners": "Banners",
+      "categories": "Categories"
     },
     "flashSales": {
       "title": "Flash sales",
@@ -858,6 +863,28 @@
         "startsAt": "Starts (optional)",
         "endsAt": "Ends (optional)"
       }
+    },
+    "categories": {
+      "title": "Product categories",
+      "createRoot": "Add root category",
+      "addChild": "Add sub-category",
+      "editTitle": "Edit category",
+      "empty": "No categories yet",
+      "parent": "Parent category: {{name}}",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Category saved",
+      "deleted": "Category deleted",
+      "confirmDelete": "Delete category \"{{name}}\"? Only categories without sub-categories or products can be deleted.",
+      "slugHint": "Leave blank to generate from the name",
+      "field": {
+        "name": "Category name",
+        "slug": "Slug (URL path)",
+        "position": "Order",
+        "iconUrl": "Icon URL (optional)"
+      }
     }
   },
   "payment": {
@@ -962,7 +989,10 @@
     "content": "Review",
     "cancel": "Cancel",
     "submit": "Submit",
-    "thanks": "Thanks for your rating!"
+    "thanks": "Thanks for your rating!",
+    "addPhoto": "Add photo",
+    "removePhoto": "Remove photo",
+    "photoCount": "{{count}}/{{max}} photos"
   },
   "voucherAdmin": {
     "platformTitle": "Platform vouchers",

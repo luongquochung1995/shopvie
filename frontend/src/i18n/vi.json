@@ -47,7 +47,8 @@
     "adminDashboard": "Tổng quan | Quản trị ShopVie",
     "adminProducts": "Sản phẩm | Quản trị ShopVie",
     "adminUsers": "Tài khoản | Quản trị ShopVie",
-    "adminBanners": "Banner | Quản trị ShopVie"
+    "adminBanners": "Banner | Quản trị ShopVie",
+    "adminCategories": "Danh mục | Quản trị ShopVie"
   },
   "language": {
     "label": "Ngôn ngữ",
@@ -341,7 +342,10 @@
     "CONVERSATION_NOT_FOUND": "Không tìm thấy cuộc trò chuyện",
     "CHAT_WITH_OWN_SHOP": "Bạn không thể chat với shop của chính mình",
     "BANNER_NOT_FOUND": "Không tìm thấy banner",
-    "USER_NOT_FOUND": "Không tìm thấy tài khoản"
+    "USER_NOT_FOUND": "Không tìm thấy tài khoản",
+    "CATEGORY_SLUG_EXISTS": "Slug danh mục đã tồn tại",
+    "CATEGORY_TOO_DEEP": "Cây danh mục tối đa 3 cấp",
+    "CATEGORY_NOT_EMPTY": "Danh mục còn danh mục con hoặc sản phẩm"
   },
   "cart": {
     "title": "Giỏ hàng",
@@ -745,7 +749,8 @@
       "dashboard": "Tổng quan",
       "products": "Sản phẩm",
       "users": "Tài khoản",
-      "banners": "Banner"
+      "banners": "Banner",
+      "categories": "Danh mục"
     },
     "flashSales": {
       "title": "Phiên flash sale",
@@ -858,6 +863,28 @@
         "startsAt": "Bắt đầu (tùy chọn)",
         "endsAt": "Kết thúc (tùy chọn)"
       }
+    },
+    "categories": {
+      "title": "Danh mục sản phẩm",
+      "createRoot": "Thêm danh mục gốc",
+      "addChild": "Thêm danh mục con",
+      "editTitle": "Sửa danh mục",
+      "empty": "Chưa có danh mục nào",
+      "parent": "Thuộc danh mục: {{name}}",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "saved": "Đã lưu danh mục",
+      "deleted": "Đã xóa danh mục",
+      "confirmDelete": "Xóa danh mục \"{{name}}\"? Chỉ xóa được danh mục không có danh mục con và sản phẩm.",
+      "slugHint": "Để trống: tự tạo từ tên",
+      "field": {
+        "name": "Tên danh mục",
+        "slug": "Slug (đường dẫn)",
+        "position": "Thứ tự",
+        "iconUrl": "URL icon (tùy chọn)"
+      }
     }
   },
   "payment": {
@@ -962,7 +989,10 @@
     "content": "Nội dung đánh giá",
     "cancel": "Hủy",
     "submit": "Gửi đánh giá",
-    "thanks": "Cảm ơn bạn đã đánh giá!"
+    "thanks": "Cảm ơn bạn đã đánh giá!",
+    "addPhoto": "Thêm ảnh",
+    "removePhoto": "Xóa ảnh",
+    "photoCount": "{{count}}/{{max}} ảnh"
   },
   "voucherAdmin": {
     "platformTitle": "Voucher sàn",

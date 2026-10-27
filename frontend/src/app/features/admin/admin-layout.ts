@@ -26,6 +26,7 @@ export default class AdminLayout {
     { path: '/admin', labelKey: 'dashboard', icon: 'pi-chart-bar', exact: true },
     { path: '/admin/shops', labelKey: 'shops', icon: 'pi-shop' },
     { path: '/admin/products', labelKey: 'products', icon: 'pi-box' },
+    { path: '/admin/categories', labelKey: 'categories', icon: 'pi-sitemap' },
     { path: '/admin/users', labelKey: 'users', icon: 'pi-users' },
     { path: '/admin/vouchers', labelKey: 'vouchers', icon: 'pi-ticket' },
     { path: '/admin/flash-sales', labelKey: 'flashSales', icon: 'pi-bolt' },
