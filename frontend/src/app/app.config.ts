@@ -20,7 +20,6 @@ import { providePrimeNG } from 'primeng/config';
 import { environment } from '../environments/environment';
 import { routes } from './app.routes';
 import { errorInterceptor } from './core/api/error.interceptor';
-import { serverApiInterceptor } from './core/api/server-api.interceptor';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthStore } from './core/auth/auth.store';
 import { DEFAULT_LANG, LANGS, TranslocoJsonLoader } from './core/i18n/i18n.config';
@@ -53,12 +52,8 @@ export const appConfig: ApplicationConfig = {
     // Nạp ngôn ngữ (cookie `lang`) trước khi render để SSR và hydrate cùng một ngôn ngữ
     provideAppInitializer(() => inject(LanguageService).init()),
     // errorInterceptor bọc ngoài cùng để authInterceptor nhận HttpErrorResponse gốc;
-    // interceptor theo môi trường (mock backend) ngay trước khi gửi request; serverApiInterceptor (chỉ có tác dụng
-    // khi SSR) trong cùng để mock vẫn nhận URL tương đối
-    provideHttpClient(
-      withFetch(),
-      withInterceptors([errorInterceptor, authInterceptor, ...environment.interceptors, serverApiInterceptor]),
-    ),
+    // interceptor theo môi trường (mock backend) nằm trong cùng, ngay trước khi gửi request
+    provideHttpClient(withFetch(), withInterceptors([errorInterceptor, authInterceptor, ...environment.interceptors])),
     // Khôi phục phiên đăng nhập từ cookie refresh (không chặn render; guard chờ AuthStore.initialized)
     provideAppInitializer(() => {
       inject(AuthStore).init().subscribe();

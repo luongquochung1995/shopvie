@@ -358,7 +358,7 @@ Cổng: FE `4200`, BE `8080`, Swagger UI `http://localhost:8080/swagger-ui.html`
 - [ ] P7-1 SSR + meta tags/Open Graph cho trang sản phẩm, `sitemap.xml` *(code xong: `Seo` service — title/description/canonical/OG/Twitter/JSON-LD, 404 khi SSR; `/robots.txt`, `/sitemap.xml` ở SSR server + `GET /seo/sitemap`; chưa đo Lighthouse)*
 - [ ] P7-2 Cache Redis cho trang chủ, category, product detail (invalidate khi cập nhật) *(code xong: danh mục 1h, chi tiết sản phẩm 10 phút — evict sau commit, danh sách 1 phút; test `PlatformIT`)*
 - [ ] P7-3 Rate limit (Bucket4j + Redis) cho login, OTP, checkout *(code xong: login/register/refresh theo IP, checkout/chat/review theo user, 429 + Retry-After; chưa có OTP; test `RateLimitIT`)*
-- [ ] P7-4 Rà soát bảo mật theo OWASP Top 10 (XSS trong mô tả/đánh giá, IDOR, CSRF cho cookie refresh) *(rà soát xong, xem `docs/security-review.md`: không còn High, còn 2 mục Medium)*
+- [x] P7-4 Rà soát bảo mật theo OWASP Top 10 (XSS trong mô tả/đánh giá, IDOR, CSRF cho cookie refresh) *(rà soát xong, xem `docs/security-review.md`: không còn High, còn 2 mục Medium)*
 - [ ] P7-5 Load test k6 các luồng chính, tối ưu query chậm (`EXPLAIN ANALYZE`) *(script k6 `read-apis.js`, `checkout.js` + `node-bench.mjs`; V11 index danh sách theo EXPLAIN ANALYZE; chưa ghi lại số đo p95 @ 500 RPS)*
 - [ ] P7-6 Prometheus + Grafana, log có cấu trúc JSON + correlation id *(code xong: `/actuator/prometheus`, log JSON ECS ở prod, `X-Request-Id` trong MDC, dashboard Grafana + cảnh báo)*
 - [ ] P7-7 Dockerfile multi-stage cho BE/FE, cấu hình deploy production (S3/R2 thay MinIO, CDN ảnh) *(code xong: Dockerfile BE/FE, `deploy/docker-compose.prod.yml`, nginx TLS; chưa build image — chưa có Docker)*

@@ -14,6 +14,33 @@ const API_ORIGIN = process.env['API_ORIGIN'] ?? 'http://localhost:8080';
 const SITE_URL = process.env['SITE_URL']?.replace(/\/$/, '');
 const SITEMAP_TTL_MS = 10 * 60 * 1000;
 
+/**
+ * Bản production gọi API bằng URL tương đối (`/api/v1`); khi SSR, Angular ghép thành URL theo host của request
+ * (vd. https://shop.example.com/api/...) → đi vòng ra domain công khai, hoặc vào chính server này khi không có nginx.
+ * Đổi các request đó sang API_ORIGIN ngay ở tầng fetch: HttpClient (và khóa cache truyền dữ liệu SSR → trình duyệt)
+ * vẫn thấy URL gốc nên trình duyệt dùng lại dữ liệu đã render, không gọi API lần nữa.
+ */
+const realFetch = globalThis.fetch;
+globalThis.fetch = (input, init) => {
+  const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+  if (url.pathname.startsWith('/api/') && isSiteHost(url.hostname)) {
+    const target = API_ORIGIN.replace(/\/$/, '') + url.pathname + url.search;
+    return realFetch(input instanceof Request ? new Request(target, input) : target, init);
+  }
+  return realFetch(input, init);
+};
+
+const SITE_HOSTS = new Set([
+  'localhost',
+  '127.0.0.1',
+  ...(SITE_URL ? [new URL(SITE_URL).hostname] : []),
+  ...(process.env['NG_ALLOWED_HOSTS']?.split(',').map((h) => h.trim()) ?? []),
+]);
+
+function isSiteHost(hostname: string): boolean {
+  return SITE_HOSTS.has(hostname);
+}
+
 const app = express();
 /**
  * Angular SSR chỉ render cho host được phép (chống SSRF qua header Host) — host lạ thì rơi về CSR, mất thẻ SEO.
