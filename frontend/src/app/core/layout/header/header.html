@@ -1,6 +1,8 @@
-<header *transloco="let t; prefix: 'header'" class="bg-gradient-to-b from-brand-500 to-brand-400 text-white">
-  <!-- Thanh trên: chỉ hiện từ tablet trở lên -->
-  <div class="mx-auto hidden max-w-6xl items-center justify-between px-4 py-1 text-xs md:flex">
+<header *transloco="let t; prefix: 'header'" class="bg-gradient-to-b from-brand-500 to-brand-400 text-white transition-shadow"
+        [class.shadow-md]="scrolled()">
+  <!-- Thanh trên: chỉ hiện từ tablet trở lên, thu gọn khi cuộn trang (header ghim chỉ còn logo, tìm kiếm, giỏ hàng) -->
+  <div class="mx-auto hidden max-w-6xl items-center justify-between overflow-hidden px-4 text-xs transition-all duration-200 md:flex"
+       [class]="scrolled() ? 'max-h-0 py-0 opacity-0' : 'max-h-8 py-1 opacity-100'" [attr.aria-hidden]="scrolled() || null" [attr.inert]="scrolled() || null">
     <a routerLink="/seller-center" class="hover:opacity-80">{{ t('sellerCenter') }}</a>
     <nav class="flex items-center gap-4" [attr.aria-label]="t('accountNav')">
       <app-language-switcher />
@@ -19,16 +21,35 @@
       <span class="hidden text-2xl font-semibold tracking-tight sm:inline md:text-3xl">{{ 'common.appName' | transloco }}</span>
     </a>
 
-    <form class="flex min-w-0 flex-1 items-center gap-1 rounded-sm bg-white p-1" role="search"
+    <form class="relative flex min-w-0 flex-1 items-center gap-1 rounded-sm bg-white p-1" role="search"
           (ngSubmit)="search()">
-      <input type="search" name="q" class="min-w-0 flex-1 px-2 py-1.5 text-gray-800 outline-none"
+      <input type="search" name="q" class="min-w-0 flex-1 px-2 py-1.5 text-gray-800 outline-none" autocomplete="off"
+             role="combobox" aria-autocomplete="list" aria-controls="search-suggestions"
+             [attr.aria-expanded]="showSuggestions()"
+             [attr.aria-activedescendant]="activeSuggestion() >= 0 ? 'search-suggestion-' + activeSuggestion() : null"
              [placeholder]="t('searchPlaceholder')" [attr.aria-label]="t('searchLabel')"
-             [ngModel]="keyword()" (ngModelChange)="keyword.set($event)" />
+             [ngModel]="keyword()" (ngModelChange)="onKeywordChange($event)" (focus)="suggestOpen.set(true)"
+             (keydown.arrowdown)="moveSuggestion(1, $event)" (keydown.arrowup)="moveSuggestion(-1, $event)" />
       <button type="submit" class="shrink-0 rounded-sm bg-brand-500 px-4 py-2 hover:bg-brand-600 md:px-6"
               [attr.aria-label]="t('searchButton')">
         <i class="pi pi-search" aria-hidden="true"></i>
       </button>
+      @if (showSuggestions()) {
+        <ul id="search-suggestions" role="listbox" [attr.aria-label]="t('suggestions')"
+            class="absolute inset-x-0 top-full z-50 mt-1 rounded-sm bg-white py-1 text-sm text-gray-800 shadow-lg">
+          @for (s of suggestions(); track s.slug; let i = $index) {
+            <li [id]="'search-suggestion-' + i" role="option" [attr.aria-selected]="i === activeSuggestion()"
+                class="cursor-pointer truncate px-3 py-2 hover:bg-brand-50"
+                [class.bg-brand-50]="i === activeSuggestion()"
+                (mousedown)="$event.preventDefault()" (click)="openSuggestion(s)">{{ s.name }}</li>
+          }
+        </ul>
+      }
     </form>
+
+    @if (auth.isLoggedIn()) {
+      <app-notification-bell class="shrink-0" />
+    }
 
     @if (auth.user(); as user) {
       <div class="relative shrink-0" data-user-menu>
@@ -54,8 +75,8 @@
             </li>
             @if (user.role === 'ADMIN') {
               <li role="none">
-                <a role="menuitem" routerLink="/admin/shops" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
-                   (click)="menuOpen.set(false)">{{ t('adminShops') }}</a>
+                <a role="menuitem" routerLink="/admin" class="block px-4 py-2 hover:bg-brand-50 hover:text-brand-500"
+                   (click)="menuOpen.set(false)">{{ t('admin') }}</a>
               </li>
             } @else {
               <li role="none">

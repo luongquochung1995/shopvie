@@ -66,6 +66,12 @@
               <span class="text-gray-600">{{ t('shipping') }}</span>
               <span>{{ group.shippingFee | vnd }}</span>
             </div>
+            @for (v of group.vouchers; track v.code) {
+              <div class="flex items-center justify-between text-brand-500 md:col-start-2 md:justify-end md:gap-6">
+                <span><i class="pi pi-ticket mr-1" aria-hidden="true"></i>{{ t(v.scope === 'SHOP' ? 'shopVoucher' : 'platformVoucher') }} {{ v.code }}</span>
+                <span>-{{ v.amount | vnd }}</span>
+              </div>
+            }
           </div>
           <p class="border-t border-gray-100 px-4 py-3 text-right text-sm md:px-6">
             {{ t('shopTotal', { count: group.items.length }) }}
@@ -74,12 +80,44 @@
         </section>
       }
 
+      <!-- Voucher -->
+      <section class="rounded-sm bg-white p-4 shadow-sm md:px-6" [attr.aria-label]="t('voucher')">
+        <div class="flex flex-wrap items-center gap-3">
+          <h2 class="flex items-center gap-2 text-lg"><i class="pi pi-ticket text-brand-500" aria-hidden="true"></i>{{ t('voucher') }}</h2>
+          @for (code of voucherCodes(); track code) {
+            <span class="inline-flex items-center gap-1 rounded-sm border border-brand-500 bg-brand-50 px-2 py-1 text-sm text-brand-500">
+              {{ code }}
+              <button type="button" class="px-1" [attr.aria-label]="t('removeVoucher', { code })" [disabled]="applyingVoucher()"
+                      (click)="removeVoucher(code)"><i class="pi pi-times text-xs" aria-hidden="true"></i></button>
+            </span>
+          }
+          <form class="flex gap-2 sm:ml-auto" (ngSubmit)="applyVoucherInput()">
+            <input type="text" name="voucher" maxlength="20" class="w-40 rounded-sm border border-gray-300 px-2 py-1.5 text-sm uppercase"
+                   [placeholder]="t('voucherPlaceholder')" [attr.aria-label]="t('voucherCode')"
+                   [ngModel]="voucherInput()" (ngModelChange)="voucherInput.set($event)" />
+            <button pButton type="submit" size="small" [outlined]="true" [disabled]="applyingVoucher() || !voucherInput().trim()">{{ t('applyVoucher') }}</button>
+          </form>
+          <button type="button" class="text-sm text-blue-600" (click)="openVoucherPicker()">{{ t('pickVoucher') }}</button>
+        </div>
+        @if (voucherError(); as err) {
+          <p class="mt-2 text-sm text-red-600" role="alert">{{ err | transloco }}</p>
+        }
+      </section>
+
       <!-- Thanh toán -->
       <section class="rounded-sm bg-white shadow-sm" [attr.aria-label]="t('payment')">
         <div class="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-4 md:px-6">
-          <h2 class="text-lg">{{ t('payment') }}</h2>
-          @for (m of p.paymentMethods; track m) {
-            <span class="rounded-sm border border-brand-500 px-3 py-1 text-sm text-brand-500">{{ t('methods.' + m) }}</span>
+          <h2 id="payment-methods" class="text-lg">{{ t('payment') }}</h2>
+          <div class="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="payment-methods">
+            @for (m of p.paymentMethods; track m) {
+              <button type="button" role="radio" class="rounded-sm border px-3 py-1.5 text-sm"
+                      [attr.aria-checked]="paymentMethod() === m"
+                      [class]="paymentMethod() === m ? 'border-brand-500 text-brand-500 ring-1 ring-brand-500' : 'border-gray-300 text-gray-700 hover:border-brand-500'"
+                      (click)="paymentMethod.set($any(m))">{{ t('methods.' + m) }}</button>
+            }
+          </div>
+          @if (paymentMethod() !== 'COD') {
+            <p class="w-full text-xs text-gray-500">{{ t('onlineHint') }}</p>
           }
         </div>
         <dl class="ml-auto grid max-w-sm grid-cols-[1fr_auto] gap-x-6 gap-y-2 px-4 py-4 text-sm md:px-6">
@@ -87,6 +125,10 @@
           <dd class="text-right">{{ p.subtotal | vnd }}</dd>
           <dt class="text-gray-600">{{ t('shippingTotal') }}</dt>
           <dd class="text-right">{{ p.shippingFee | vnd }}</dd>
+          @if (p.discount > 0) {
+            <dt class="text-gray-600">{{ t('voucherDiscount') }}</dt>
+            <dd class="text-right text-brand-500">-{{ p.discount | vnd }}</dd>
+          }
           <dt class="text-gray-600">{{ t('grandTotal') }}</dt>
           <dd class="text-right text-2xl font-medium text-brand-500">{{ p.total | vnd }}</dd>
         </dl>
@@ -99,13 +141,42 @@
             <p class="text-xs text-gray-500">{{ t('terms', { count: itemCount() }) }}</p>
           }
           <button pButton type="button" class="justify-center px-12" [disabled]="placing() || loading() || !p.address || p.hasUnavailableItems"
-                  (click)="placeOrder()">{{ t(placing() ? 'placing' : 'placeOrder') }}</button>
+                  (click)="placeOrder()">{{ t(placing() ? 'placing' : paymentMethod() === 'COD' ? 'placeOrder' : 'placeAndPay') }}</button>
         </div>
       </section>
     </div>
   } @else if (loading()) {
     <p class="py-12 text-center text-gray-500">{{ 'common.loading' | transloco }}</p>
   }
+
+  <p-dialog [header]="t('pickVoucher')" [visible]="voucherDialog()" (visibleChange)="voucherDialog.set($event)"
+            [modal]="true" [draggable]="false" [style]="{ width: '32rem' }" [breakpoints]="{ '640px': '95vw' }">
+    @if (availableVouchers().length === 0) {
+      <p class="py-6 text-center text-sm text-gray-500">{{ t('noVouchers') }}</p>
+    } @else {
+      <ul class="flex flex-col gap-2">
+        @for (v of availableVouchers(); track v.id) {
+          <li>
+            <button type="button" class="flex w-full items-stretch overflow-hidden rounded-sm border text-left text-sm"
+                    [class]="voucherCodes().includes(v.code) ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200 hover:border-brand-500'"
+                    [attr.aria-pressed]="voucherCodes().includes(v.code)" [disabled]="applyingVoucher()" (click)="toggleVoucher(v)">
+              <span class="flex w-20 shrink-0 flex-col items-center justify-center gap-1 bg-brand-500 p-2 text-center text-xs text-white">
+                <i class="pi pi-ticket text-lg" aria-hidden="true"></i>{{ t(v.shopId === null ? 'platformVoucher' : 'shopVoucher') }}
+              </span>
+              <span class="flex min-w-0 flex-1 flex-col gap-0.5 p-2">
+                <b class="truncate">{{ v.name }}</b>
+                <span class="text-brand-500">{{ v | voucherValue }}</span>
+                <span class="text-xs text-gray-500">{{ t('voucherMinOrder', { amount: (v.minOrderValue | vnd) }) }} · {{ v.code }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+    @if (voucherError(); as err) {
+      <p class="mt-2 text-sm text-red-600" role="alert">{{ err | transloco }}</p>
+    }
+  </p-dialog>
 
   <p-dialog [header]="t(addressDialog() === 'new' ? 'newAddress' : 'pickAddress')" [visible]="addressDialog() !== null"
             (visibleChange)="!$event && addressDialog.set(null)" [modal]="true" [draggable]="false"

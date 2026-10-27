@@ -34,10 +34,10 @@ public final class ShopViews {
 
     /** Dòng trong danh sách duyệt shop của admin. */
     public record AdminShop(Long id, String name, String slug, String logoUrl, String description, ShopStatus status,
-                            String rejectReason, Owner owner, Instant createdAt, Instant updatedAt) {
+                            String rejectReason, String banReason, Owner owner, Instant createdAt, Instant updatedAt) {
         static AdminShop of(Shop s, UserAccount owner) {
             return new AdminShop(s.getId(), s.getName(), s.getSlug(), s.getLogoUrl(), s.getDescription(), s.getStatus(),
-                    s.getRejectReason(), Owner.of(owner), s.getCreatedAt(), s.getUpdatedAt());
+                    s.getRejectReason(), s.getBanReason(), Owner.of(owner), s.getCreatedAt(), s.getUpdatedAt());
         }
     }
 }

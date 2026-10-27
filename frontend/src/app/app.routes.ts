@@ -15,6 +15,14 @@ export const routes: Routes = [
       { path: 'success', loadComponent: () => import('./features/checkout/checkout-success'), title: 'title.checkoutSuccess' },
     ],
   },
+  {
+    path: 'payment',
+    canActivate: [authGuard()],
+    children: [
+      { path: 'result', loadComponent: () => import('./features/payment/payment-result'), title: 'title.paymentResult' },
+      { path: 'sandbox', loadComponent: () => import('./features/payment/payment-sandbox'), title: 'title.paymentSandbox' },
+    ],
+  },
   { path: 'auth', canActivate: [guestGuard], loadChildren: () => import('./features/auth/auth.routes') },
   { path: 'account', canActivate: [authGuard()], loadChildren: () => import('./features/account/account.routes') },
   {

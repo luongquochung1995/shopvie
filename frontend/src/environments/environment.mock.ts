@@ -1,4 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { MockRealtimeService } from '../app/mock/mock-realtime';
 import { mockBackendInterceptor } from '../app/mock/mock-backend.interceptor';
 
 const apiBaseUrl = '/api/v1';
@@ -11,4 +12,8 @@ export const environment = {
   production: false,
   apiBaseUrl,
   interceptors: [mockBackendInterceptor(apiBaseUrl)] as HttpInterceptorFn[],
+  /** Endpoint STOMP over SockJS (thông báo, chat realtime). */
+  wsUrl: '/ws',
+  /** Cài đặt kênh realtime. */
+  realtime: MockRealtimeService,
 };

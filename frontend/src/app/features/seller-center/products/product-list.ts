@@ -71,6 +71,9 @@ type Tab = (typeof TABS)[number];
                   <span class="mr-2 rounded-sm px-1" [class]="statusTone(p.status)">{{ 'productStatus.' + p.status | transloco }}</span>
                   {{ t('variants', { count: p.variantCount }) }}
                 </p>
+                @if (p.banReason) {
+                  <p class="text-xs text-red-700">{{ 'seller.products.banReason' | transloco: { reason: p.banReason } }}</p>
+                }
               </div>
             </div>
             <span class="text-brand-500 md:text-gray-800">{{ priceRange(p) }}</span>

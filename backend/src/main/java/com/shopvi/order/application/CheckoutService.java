@@ -23,11 +23,17 @@ import com.shopvi.order.domain.PaymentMethod;
 import com.shopvi.order.domain.PaymentStatus;
 import com.shopvi.order.domain.ShippingAddress;
 import com.shopvi.order.infra.OrderRepository;
+import com.shopvi.order.domain.OrderVoucher;
 import com.shopvi.payment.PaymentApi;
 import com.shopvi.payment.PaymentChannel;
 import com.shopvi.payment.PaymentLink;
 import com.shopvi.payment.PaymentRequest;
 import com.shopvi.payment.PaymentState;
+import com.shopvi.promotion.PromotionApi;
+import com.shopvi.promotion.PromotionApi.AppliedVoucher;
+import com.shopvi.promotion.PromotionApi.Redemption;
+import com.shopvi.promotion.PromotionApi.ShopAmount;
+import com.shopvi.promotion.PromotionApi.VoucherQuote;
 import com.shopvi.shipping.Location;
 import com.shopvi.shipping.ShippingApi;
 import com.shopvi.shipping.ShippingApi.QuoteRequest;
@@ -62,18 +68,20 @@ public class CheckoutService {
     private final ShopApi shopApi;
     private final UserApi userApi;
     private final PaymentApi paymentApi;
+    private final PromotionApi promotionApi;
     private final ShippingApi shippingApi;
     private final OrderRepository orderRepository;
     private final OrderProperties properties;
+    private final OrderEvents orderEvents;
     private final Clock clock;
 
     /** Xem trước: tính tiền các món đã chọn, tách theo shop, phí ship theo địa chỉ nhận. */
     @Transactional(readOnly = true)
-    public Preview preview(Long userId, Long addressId) {
+    public Preview preview(Long userId, Long addressId, List<String> voucherCodes) {
         AddressSnapshot address = addressId != null
                 ? userApi.findAddress(userId, addressId).orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND))
                 : userApi.findDefaultAddress(userId).orElse(null);
-        return quote(userId, address);
+        return quote(userId, address, voucherCodes);
     }
 
     /**
@@ -89,7 +97,7 @@ public class CheckoutService {
         }
         AddressSnapshot address = userApi.findAddress(userId, cmd.addressId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.ADDRESS_NOT_FOUND));
-        Preview quote = quote(userId, address);
+        Preview quote = quote(userId, address, cmd.voucherCodes());
 
         List<ErrorDetail> unavailable = quote.groups().stream().flatMap(g -> g.items().stream())
                 .filter(l -> !l.available())
@@ -110,6 +118,7 @@ public class CheckoutService {
         UUID checkoutId = Uuid7.next(clock);
         Map<Long, String> notes = cmd.notes() == null ? Map.of() : cmd.notes();
         List<Order> created = new ArrayList<>();
+        List<Redemption> redemptions = new ArrayList<>();
         List<PlacedOrder> placed = quote.groups().stream().map(g -> {
             List<OrderItem.Snapshot> lines = g.items().stream()
                     .map(l -> new OrderItem.Snapshot(l.variantId(), l.productId(), l.productName(), l.productSlug(),
@@ -117,11 +126,18 @@ public class CheckoutService {
                     .toList();
             Order order = orderRepository.save(Order.place(Uuid7.next(clock).toString(), checkoutId, userId,
                     g.shop().id(), method, ShippingAddress.of(address), note(notes.get(g.shop().id())),
-                    g.shippingFee(), lines));
+                    g.shippingFee(), g.vouchers().stream()
+                            .map(v -> new OrderVoucher(v.code(), v.type(), v.scope(), v.amount())).toList(), lines));
             created.add(order);
+            orderEvents.placed(order);
+            g.vouchers().forEach(v -> redemptions.add(new Redemption(v.voucherId(), order.getId(), v.amount())));
             return new PlacedOrder(order.getCode(), order.getShopId(), order.getTotal());
         }).toList();
 
+        // Ghi lượt dùng voucher (nguyên tử theo giới hạn lượt) — lỗi thì rollback cả lần đặt hàng
+        if (!redemptions.isEmpty()) {
+            promotionApi.redeemVouchers(userId, checkoutId, redemptions);
+        }
         cartApi.removeVariants(userId, quote.groups().stream()
                 .flatMap(g -> g.items().stream()).map(Line::variantId).toList());
 
@@ -197,7 +213,7 @@ public class CheckoutService {
                 .truncatedTo(ChronoUnit.MICROS).plus(paymentApi.paymentTtl());
     }
 
-    private Preview quote(Long userId, AddressSnapshot address) {
+    private Preview quote(Long userId, AddressSnapshot address, List<String> voucherCodes) {
         List<CartLine> lines = cartApi.selectedLines(userId);
         if (lines.isEmpty()) {
             throw new BusinessException(ErrorCode.NO_ITEMS_SELECTED);
@@ -213,21 +229,30 @@ public class CheckoutService {
         }
         Map<Long, ShopSummary> shops = shopApi.findSummaries(byShop.keySet());
 
-        List<ShopGroup> groups = byShop.entrySet().stream().map(e -> {
+        List<ShopAmount> amounts = byShop.entrySet().stream().map(e -> {
             long subtotal = e.getValue().stream().mapToLong(Line::lineTotal).sum();
             int itemCount = e.getValue().stream().mapToInt(Line::quantity).sum();
-            long shipping = shippingFee(e.getKey(), address, itemCount, subtotal);
-            return new ShopGroup(shops.get(e.getKey()), e.getValue(), subtotal, shipping, 0, subtotal + shipping);
+            return new ShopAmount(e.getKey(), subtotal, shippingFee(e.getKey(), address, itemCount, subtotal));
+        }).toList();
+        VoucherQuote vouchers = voucherCodes == null || voucherCodes.isEmpty() ? VoucherQuote.empty()
+                : promotionApi.quoteVouchers(userId, voucherCodes, amounts);
+        List<ShopGroup> groups = amounts.stream().map(a -> {
+            long discount = vouchers.discountOf(a.shopId());
+            return new ShopGroup(shops.get(a.shopId()), byShop.get(a.shopId()), a.subtotal(), a.shippingFee(), discount,
+                    a.subtotal() + a.shippingFee() - discount, vouchers.byShop().getOrDefault(a.shopId(), List.of()));
         }).toList();
         long subtotal = groups.stream().mapToLong(ShopGroup::subtotal).sum();
         long shipping = groups.stream().mapToLong(ShopGroup::shippingFee).sum();
+        long discount = groups.stream().mapToLong(ShopGroup::discount).sum();
         boolean hasUnavailable = groups.stream().flatMap(g -> g.items().stream()).anyMatch(l -> !l.available());
-        return new Preview(address, groups, subtotal, shipping, 0, subtotal + shipping,
-                supportedPayments().stream().map(Enum::name).toList(), hasUnavailable);
+        List<String> applied = vouchers.byShop().values().stream().flatMap(List::stream)
+                .map(AppliedVoucher::code).distinct().toList();
+        return new Preview(address, groups, subtotal, shipping, discount, subtotal + shipping - discount,
+                supportedPayments().stream().map(Enum::name).toList(), hasUnavailable, applied);
     }
 
     /** Phí ship từ địa chỉ lấy hàng của shop tới địa chỉ nhận; chưa có địa chỉ nhận thì dùng phí ước tính. */
-    private long shippingFee(Long shopId, AddressSnapshot address, int itemCount, long subtotal) {
+    long shippingFee(Long shopId, AddressSnapshot address, int itemCount, long subtotal) {
         if (address == null) {
             return properties.shippingFee();
         }

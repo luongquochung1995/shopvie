@@ -9,20 +9,89 @@ import { join } from 'node:path';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
+/** Backend (SSR server gọi trực tiếp, không qua reverse proxy) và URL công khai của site (cho sitemap/robots). */
+const API_ORIGIN = process.env['API_ORIGIN'] ?? 'http://localhost:8080';
+const SITE_URL = process.env['SITE_URL']?.replace(/\/$/, '');
+const SITEMAP_TTL_MS = 10 * 60 * 1000;
+
 const app = express();
 const angularApp = new AngularNodeAppEngine();
 
+// Sau reverse proxy (nginx): lấy đúng giao thức / IP gốc từ X-Forwarded-*
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
+app.disable('x-powered-by');
+
 /**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
+ * Header bảo mật cho mọi response của SSR server (P7-4). CSP chưa giới hạn script vì Angular SSR chèn script inline
+ * (event replay) — bật `security.autoCsp` của Angular là bước tiếp theo (xem docs/security-review.md).
  */
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self'");
+  next();
+});
+
+/** URL gốc của site: cấu hình SITE_URL (khuyến nghị, tránh giả mạo Host), không có thì theo request. */
+function siteUrl(req: express.Request): string {
+  return SITE_URL ?? `${req.protocol}://${req.get('host')}`;
+}
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send(
+    [
+      '# ShopVie — trang công khai cho phép lập chỉ mục; khu vực cá nhân / quản trị thì không',
+      'User-agent: *',
+      'Allow: /',
+      ...['/account', '/cart', '/checkout', '/payment', '/seller-center', '/admin', '/auth', '/search'].map((p) => `Disallow: ${p}`),
+      '',
+      `Sitemap: ${siteUrl(req)}/sitemap.xml`,
+      '',
+    ].join('\n'),
+  );
+});
+
+interface SitemapData {
+  categories: { slug: string }[];
+  products: { slug: string; updatedAt: string }[];
+}
+
+let sitemapCache: { xml: string; site: string; at: number } | null = null;
+
+/** sitemap.xml: trang chủ, danh mục, sản phẩm đang bán (dữ liệu từ backend, cache 10 phút). */
+app.get('/sitemap.xml', async (req, res) => {
+  const site = siteUrl(req);
+  try {
+    if (!sitemapCache || sitemapCache.site !== site || Date.now() - sitemapCache.at > SITEMAP_TTL_MS) {
+      const response = await fetch(`${API_ORIGIN}/api/v1/seo/sitemap`);
+      if (!response.ok) {
+        throw new Error(`backend responded ${response.status}`);
+      }
+      const data = ((await response.json()) as { data: SitemapData }).data;
+      sitemapCache = { xml: sitemapXml(site, data), site, at: Date.now() };
+    }
+    res.type('application/xml').send(sitemapCache.xml);
+  } catch (err) {
+    console.error('sitemap.xml failed:', err);
+    res.status(503).type('text/plain').send('Sitemap temporarily unavailable');
+  }
+});
+
+function sitemapXml(site: string, data: SitemapData): string {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const url = (path: string, extra = '') => `  <url><loc>${esc(site + path)}</loc>${extra}</url>`;
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    url('/', '<changefreq>daily</changefreq><priority>1.0</priority>'),
+    ...data.categories.map((c) => url(`/c/${encodeURIComponent(c.slug)}`, '<changefreq>daily</changefreq>')),
+    ...data.products.map((p) => url(`/p/${encodeURIComponent(p.slug)}`, `<lastmod>${p.updatedAt.slice(0, 10)}</lastmod>`)),
+    '</urlset>',
+    '',
+  ].join('\n');
+}
 
 /**
  * Serve static files from /browser

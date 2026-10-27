@@ -1,0 +1,51 @@
+# Profile prod (P7-7): chạy sau reverse proxy (nginx) trong container; mọi bí mật đến từ biến môi trường.
+server:
+  # Lấy scheme / IP gốc từ X-Forwarded-* của nginx (rate limit theo IP, URL tuyệt đối)
+  forward-headers-strategy: native
+  shutdown: graceful
+  tomcat:
+    threads:
+      max: ${TOMCAT_MAX_THREADS:200}
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+
+management:
+  # Cổng quản trị riêng: chỉ Prometheus trong mạng nội bộ truy cập, nginx không chuyển ra Internet
+  server:
+    port: ${MANAGEMENT_PORT:8081}
+  endpoint:
+    health:
+      show-details: never
+
+# Log JSON chuẩn ECS (có requestId từ MDC) để đẩy vào Loki/ELK
+logging:
+  structured:
+    format:
+      console: ecs
+  level:
+    root: INFO
+    com.shopvi: INFO
+
+# Không công bố tài liệu API ở production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+app:
+  auth:
+    refresh-cookie-secure: true
+  dev-seed:
+    enabled: false
+  payment:
+    sandbox-gateway: false
+  media:
+    # S3 / Cloudflare R2: bucket + quyền đọc public tạo bằng hạ tầng; URL ảnh qua CDN
+    manage-bucket: ${MEDIA_MANAGE_BUCKET:false}
+    url-includes-bucket: ${MEDIA_URL_INCLUDES_BUCKET:false}

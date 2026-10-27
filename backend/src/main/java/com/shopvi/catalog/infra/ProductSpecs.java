@@ -29,6 +29,10 @@ public final class ProductSpecs {
         return (root, query, cb) -> cb.lessThanOrEqualTo(root.get("minPrice"), maxPrice);
     }
 
+    public static Specification<Product> shopNotIn(Collection<Long> shopIds) {
+        return (root, query, cb) -> cb.not(root.get("shopId").in(shopIds));
+    }
+
     public static Specification<Product> ofShop(Long shopId) {
         return (root, query, cb) -> cb.equal(root.get("shopId"), shopId);
     }

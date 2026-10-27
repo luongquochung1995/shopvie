@@ -6,6 +6,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.autoconfigure.actuate.observability.AutoConfigureObservability;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
@@ -20,6 +21,8 @@ import org.springframework.context.annotation.Import;
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @ExtendWith(DockerOrExternalCondition.class)
+// Bật exporter metrics (mặc định @SpringBootTest tắt) để kiểm /actuator/prometheus
+@AutoConfigureObservability(tracing = false)
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "app.auth.jwt-secret=c2hvcHZpLWludGVncmF0aW9uLXRlc3Qtc2VjcmV0LWtleS0xMjM0NTY3ODkw",
@@ -36,6 +39,12 @@ import org.springframework.context.annotation.Import;
         "app.payment.momo.access-key=it-momo-access",
         "app.payment.momo.secret-key=it-momo-secret",
         "app.order.expiry-job.enabled=false",
-        "app.shipping.ghn.webhook-token=it-ghn-token"})
+        "app.shipping.ghn.webhook-token=it-ghn-token",
+        // Chỉ mục tìm kiếm riêng cho test (không đụng chỉ mục dev khi dùng chung Elasticsearch local)
+        "app.search.alias=it-products",
+        // Khóa cache riêng (dev và IT dùng chung Redis local)
+        "app.cache.key-prefix=shopvi-it:",
+        // Rate limit kiểm riêng ở RateLimitIT (IT đăng nhập/đăng ký rất nhiều từ cùng một IP)
+        "app.rate-limit.enabled=false"})
 public @interface IntegrationTest {
 }

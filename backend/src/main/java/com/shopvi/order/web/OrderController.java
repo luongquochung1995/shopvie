@@ -58,6 +58,12 @@ class OrderController {
         return ApiResponse.ok(orderService.cancel(userId, code, req == null ? null : req.reason()));
     }
 
+    @Operation(summary = "Đã nhận hàng: xác nhận hoàn thành đơn (Đã giao → Hoàn thành), sau đó đánh giá được sản phẩm")
+    @PostMapping("/{code}/complete")
+    ApiResponse<OrderDetail> complete(@CurrentUserId Long userId, @PathVariable String code) {
+        return ApiResponse.ok(orderService.complete(userId, code));
+    }
+
     record CancelRequest(@Size(max = 500) String reason) {
     }
 }

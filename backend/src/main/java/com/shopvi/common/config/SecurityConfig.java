@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
 /**
@@ -41,6 +42,10 @@ public class SecurityConfig {
                 // API stateless dùng Bearer token; cookie refresh token có SameSite=Strict (CSRF rà soát ở P7-4)
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
+                // P7-4: API không được nhúng frame, không lộ URL qua Referer (các header mặc định khác giữ nguyên)
+                .headers(h -> h
+                        .contentSecurityPolicy(csp -> csp.policyDirectives("frame-ancestors 'none'"))
+                        .referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
@@ -48,14 +53,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        // Prometheus scrape: prod chạy trên cổng quản trị riêng (management.server.port), chỉ mở trong mạng nội bộ
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        // Bắt tay WebSocket/SockJS: xác thực bằng JWT trong khung STOMP CONNECT (StompAuthInterceptor)
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(API + "/auth/**").permitAll()
                         // Cổng thanh toán / hãng vận chuyển gọi về: xác thực bằng chữ ký / token riêng
                         .requestMatchers(API + "/payments/vnpay/**", API + "/payments/momo/**",
                                 API + "/shipping/ghn/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, API + "/products/**", API + "/categories/**",
-                                API + "/shops/**").permitAll()
+                                API + "/shops/**", API + "/search/**", API + "/flash-sales/current",
+                                API + "/banners", API + "/seo/**").permitAll()
                         // Mở shop: người mua đã đăng nhập (service chặn ADMIN và người đã có shop)
                         .requestMatchers(HttpMethod.POST, API + "/seller/shop/register").authenticated()
                         .requestMatchers(API + "/seller/**").hasRole(Roles.SELLER)

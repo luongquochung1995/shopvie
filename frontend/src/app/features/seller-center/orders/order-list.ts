@@ -49,7 +49,7 @@ const PAGE_SIZE = 10;
                 <span class="font-medium">{{ order.receiverName }}</span>
                 <span class="text-xs text-gray-400">{{ order.createdAt | dateTime }}</span>
               </span>
-              <span class="uppercase text-brand-500">{{ 'orderStatus.' + order.status | transloco }}</span>
+              <span class="uppercase text-brand-500">{{ (order.awaitingPayment ? 'orders.awaitingPayment' : 'orderStatus.' + order.status) | transloco }}</span>
             </header>
             <div class="px-4"><app-order-items [items]="order.items" /></div>
             @if (order.note) {
@@ -116,7 +116,7 @@ export default class SellerOrderList {
     const tab = this.currentTab();
     this.orders.update((list) =>
       tab === 'ALL'
-        ? list.map((o) => (o.code === updated.code ? { ...o, status: updated.status, actions: updated.actions } : o))
+        ? list.map((o) => (o.code === updated.code ? { ...o, status: updated.status, actions: updated.actions, awaitingPayment: updated.awaitingPayment } : o))
         : list.filter((o) => o.code !== updated.code),
     );
     this.loadCounts();

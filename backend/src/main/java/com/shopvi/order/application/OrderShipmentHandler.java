@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
 class OrderShipmentHandler {
 
     private final OrderRepository orderRepository;
+    private final OrderEvents orderEvents;
 
     @EventListener
     public void on(ShipmentProgressed event) {
@@ -34,9 +35,9 @@ class OrderShipmentHandler {
         });
     }
 
-    private static void advance(Order order, OrderStatus next, String note) {
+    private void advance(Order order, OrderStatus next, String note) {
         if (order.getStatus().canTransitionTo(next)) {
-            order.transitionTo(next, null, note);
+            orderEvents.transition(order, next, null, note);
         }
     }
 }

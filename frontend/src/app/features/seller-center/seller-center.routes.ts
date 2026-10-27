@@ -29,6 +29,8 @@ export default [
       { path: 'products/:id', loadComponent: () => import('./products/product-form'), title: 'title.sellerProductEdit' },
       { path: 'orders', loadComponent: () => import('./orders/order-list'), title: 'title.sellerOrders' },
       { path: 'orders/:code', loadComponent: () => import('./orders/order-detail'), title: 'title.sellerOrderDetail' },
+      { path: 'vouchers', loadComponent: () => import('../promotion/voucher-manager'), data: { scope: 'seller' }, title: 'title.sellerVouchers' },
+      { path: 'reviews', loadComponent: () => import('./reviews/review-list'), title: 'title.sellerReviews' },
       { path: 'shop', loadComponent: () => import('./shop-profile'), title: 'title.sellerShop' },
     ],
   },

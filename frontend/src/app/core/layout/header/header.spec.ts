@@ -3,15 +3,24 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
+import { MessageService } from 'primeng/api';
 import { translocoTesting } from '../../../../testing/transloco-testing';
 import { AuthStore } from '../../auth/auth.store';
+import { MockRealtimeService } from '../../../mock/mock-realtime';
+import { RealtimeService } from '../../realtime/realtime.service';
 import { Header } from './header';
 
 describe('Header', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [Header, translocoTesting()],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        MessageService,
+        { provide: RealtimeService, useClass: MockRealtimeService },
+      ],
     }).compileComponents();
   });
 
@@ -47,7 +56,7 @@ describe('Header', () => {
     expect(el.querySelector('a[href="/auth/login"]')).toBeNull();
   });
 
-  it('shows the shop approval link for admins', async () => {
+  it('shows the admin link for admins', async () => {
     TestBed.inject(AuthStore).setSession({
       accessToken: 't',
       tokenType: 'Bearer',
@@ -60,7 +69,7 @@ describe('Header', () => {
 
     el.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')!.click();
     await fixture.whenStable();
-    expect(el.querySelector('[role="menu"] a[href="/admin/shops"]')).toBeTruthy();
+    expect(el.querySelector('[role="menu"] a[href="/admin"]')).toBeTruthy();
     expect(el.querySelector('[role="menu"] a[href="/seller-center"]')).toBeNull();
   });
 

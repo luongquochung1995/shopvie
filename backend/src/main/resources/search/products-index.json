@@ -1,0 +1,47 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "analysis": {
+      "analyzer": {
+        "vi_folded": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "asciifolding"]
+        },
+        "vi_exact": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "id": { "type": "long" },
+      "name": {
+        "type": "text",
+        "analyzer": "vi_folded",
+        "fields": {
+          "exact": { "type": "text", "analyzer": "vi_exact" },
+          "suggest": { "type": "search_as_you_type", "analyzer": "vi_folded" }
+        }
+      },
+      "slug": { "type": "keyword", "index": false },
+      "categoryIds": { "type": "long" },
+      "categoryNames": { "type": "text", "analyzer": "vi_folded" },
+      "shopId": { "type": "long" },
+      "shopName": { "type": "text", "analyzer": "vi_folded" },
+      "keywords": { "type": "text", "analyzer": "vi_folded" },
+      "thumbnailUrl": { "type": "keyword", "index": false },
+      "minPrice": { "type": "long" },
+      "maxPrice": { "type": "long" },
+      "soldCount": { "type": "integer" },
+      "ratingAvg": { "type": "float" },
+      "ratingCount": { "type": "integer" },
+      "createdAt": { "type": "date", "format": "epoch_millis" }
+    }
+  }
+}

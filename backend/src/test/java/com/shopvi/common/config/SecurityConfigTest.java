@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.shopvi.common.ratelimit.RateLimiter;
 import com.shopvi.common.web.ApiResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +40,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
+
+    @MockitoBean
+    private RateLimiter rateLimiter;
 
     /** JWT giả lập với claim {@code role}, quyền được map bằng converter thật của ứng dụng. */
     private JwtRequestPostProcessor withRole(String role) {

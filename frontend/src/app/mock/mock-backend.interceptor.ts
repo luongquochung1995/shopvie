@@ -4,6 +4,11 @@ import { Address, AuthResponse, CategoryNode, Profile, ProductCard, SellerAction
 import { MockUser } from './mock-data';
 import * as commerce from './mock-commerce';
 import { MockAddress, MockDb } from './mock-db';
+import * as payment from './mock-payment';
+import * as promotion from './mock-promotion';
+import * as reviews from './mock-review';
+import * as searchMock from './mock-search';
+import * as social from './mock-social';
 import * as seller from './mock-seller';
 
 /**
@@ -63,6 +68,7 @@ export function mockBackendInterceptor(apiBaseUrl: string, latencyMs = 250): Htt
 
 function route(req: HttpRequest<unknown>, path: string): MockResult | Promise<MockResult> {
   const d = mockDb();
+  payment.expireUnpaid(d);
   const m = req.method;
   const body = (req.body ?? {}) as Record<string, unknown>;
   let match: RegExpMatchArray | null;
@@ -90,6 +96,16 @@ function route(req: HttpRequest<unknown>, path: string): MockResult | Promise<Mo
     const { categoryId: _c, createdAt: _t, status: _s, updatedAt: _u, ...detail } = p;
     return ok(detail);
   }
+
+  // ----- Tìm kiếm / đánh giá / flash sale (public)
+  const publicQuery = new URLSearchParams(req.urlWithParams.split('?')[1] ?? '');
+  if (m === 'GET' && path === '/search') return searchMock.search(d, publicQuery);
+  if (m === 'GET' && path === '/search/suggest') return searchMock.suggest(d, publicQuery);
+  if (m === 'GET' && (match = path.match(/^\/products\/([^/]+)\/reviews$/))) {
+    return reviews.productReviews(d, decodeURIComponent(match[1]), publicQuery);
+  }
+  if (m === 'GET' && path === '/flash-sales/current') return promotion.currentFlashSales(d);
+  if (m === 'GET' && path === '/banners') return social.liveBanners(d);
 
   // ----- Cần đăng nhập
   const auth = authenticate(d, req);
@@ -174,9 +190,46 @@ function route(req: HttpRequest<unknown>, path: string): MockResult | Promise<Mo
     if (m === 'PATCH') return commerce.updateCartItem(d, user.id, Number(match[1]), body);
     if (m === 'DELETE') return commerce.removeCartItems(d, user.id, [Number(match[1])]);
   }
-  if (path === '/checkout/preview' && m === 'POST') return commerce.previewCheckout(d, user.id, Number(body['addressId']) || undefined);
+  if (path === '/checkout/preview' && m === 'POST') {
+    return commerce.previewCheckout(d, user.id, Number(body['addressId']) || undefined, body['voucherCodes']);
+  }
   if (path === '/checkout' && m === 'POST') return commerce.placeOrder(d, user, body);
+  if ((match = path.match(/^\/checkout\/([^/]+)\/payment$/))) {
+    if (m === 'GET') return payment.checkoutPayment(d, user.id, decodeURIComponent(match[1]));
+    if (m === 'POST') return payment.retryPayment(d, user.id, decodeURIComponent(match[1]));
+  }
+  if ((match = path.match(/^\/payments\/sandbox\/([^/]+)$/)) && m === 'POST') {
+    return payment.completeSandbox(d, user.id, decodeURIComponent(match[1]), body['success']);
+  }
   if (path === '/orders' && m === 'GET') return commerce.listOrders(d, user.id, query);
+  if ((match = path.match(/^\/orders\/([^/]+)\/complete$/)) && m === 'POST') return commerce.completeOrder(d, user.id, decodeURIComponent(match[1]));
+  if ((match = path.match(/^\/orders\/([^/]+)\/reviews$/)) && m === 'GET') return reviews.orderReviews(d, user.id, decodeURIComponent(match[1]));
+  if ((match = path.match(/^\/orders\/([^/]+)\/items\/(\d+)\/review$/)) && m === 'POST') {
+    return reviews.createReview(d, user, decodeURIComponent(match[1]), Number(match[2]), body);
+  }
+  // ----- Thông báo / chat
+  if (path.startsWith('/chat/') || path.startsWith('/notifications')) d.syncShared();
+  if (path === '/notifications' && m === 'GET') return social.listNotifications(d, user.id, query);
+  if (path === '/notifications/read-all' && m === 'POST') return social.markAllNotificationsRead(d, user.id);
+  if ((match = path.match(/^\/notifications\/(\d+)\/read$/)) && m === 'POST') return social.markNotificationRead(d, user.id, Number(match[1]));
+  if (path === '/chat/conversations' && m === 'POST') return social.openConversation(d, user, Number(body['shopId']));
+  if (path === '/chat/conversations' && m === 'GET') return social.listConversations(d, user, query);
+  if (path === '/chat/unread-count' && m === 'GET') return social.chatUnread(d, user);
+  if ((match = path.match(/^\/chat\/conversations\/(\d+)\/messages$/))) {
+    if (m === 'GET') return social.messages(d, user, Number(match[1]), query);
+    if (m === 'POST') return social.sendMessage(d, user, Number(match[1]), body);
+  }
+  if ((match = path.match(/^\/chat\/conversations\/(\d+)\/read$/)) && m === 'POST') return social.markConversationRead(d, user, Number(match[1]));
+
+  if (path === '/vouchers/available' && m === 'GET') {
+    return promotion.availableVouchers(d, user.id, (query.get('shopIds') ?? '').split(',').filter(Boolean).map(Number));
+  }
+  if ((match = path.match(/^\/flash-sales\/items\/(\d+)\/purchase$/)) && m === 'POST') {
+    return promotion.purchaseFlashSale(d, user, Number(match[1]), body);
+  }
+  if ((match = path.match(/^\/flash-sales\/reservations\/([^/]+)$/)) && m === 'GET') {
+    return promotion.reservation(d, user.id, decodeURIComponent(match[1]));
+  }
   if ((match = path.match(/^\/orders\/([^/]+)\/cancel$/)) && m === 'POST') {
     return commerce.cancelOrder(d, user.id, decodeURIComponent(match[1]), body['reason'] as string | undefined);
   }
@@ -198,6 +251,7 @@ function sellerRoute(
   let match: RegExpMatchArray | null;
   if (path === '/seller/shop' && m === 'GET') return seller.myShop(d, user);
   if (path === '/seller/shop' && m === 'PUT') return seller.updateShop(d, user, body);
+  if (path === '/seller/shop/pickup-address' && m === 'PUT') return seller.updatePickupAddress(d, user, body);
   if (path === '/seller/products' && m === 'GET') return seller.listProducts(d, user, query);
   if (path === '/seller/products' && m === 'POST') return seller.saveProduct(d, user, null, body);
   if ((match = path.match(/^\/seller\/products\/(\d+)\/visibility$/)) && m === 'PATCH') {
@@ -217,13 +271,44 @@ function sellerRoute(
     return seller.getOrder(d, user, decodeURIComponent(match[1]));
   }
   if (path === '/seller/dashboard' && m === 'GET') return seller.dashboard(d, user, query);
+  const shopId = d.shops.find((s) => s.ownerId === user.id)?.id;
+  if (path.startsWith('/seller/vouchers') && !shopId) return fail(404, 'SHOP_NOT_FOUND');
+  if (path === '/seller/vouchers' && m === 'GET') return promotion.listVouchers(d, shopId!, query);
+  if (path === '/seller/vouchers' && m === 'POST') return promotion.createVoucher(d, shopId!, body);
+  if ((match = path.match(/^\/seller\/vouchers\/(\d+)\/disable$/)) && m === 'POST') return promotion.disableVoucher(d, shopId!, Number(match[1]));
+  if (path === '/seller/reviews' && m === 'GET') return reviews.sellerReviews(d, user, query);
+  if ((match = path.match(/^\/seller\/reviews\/(\d+)\/reply$/)) && m === 'POST') return reviews.replyReview(d, user, Number(match[1]), body);
   return fail(404, 'NOT_FOUND');
 }
 
 function adminRoute(d: MockDb, m: string, path: string, body: Record<string, unknown>, query: URLSearchParams): MockResult {
   if (path === '/admin/shops' && m === 'GET') return seller.adminListShops(d, query);
-  const match = path.match(/^\/admin\/shops\/(\d+)\/(approve|reject)$/);
+  let match = path.match(/^\/admin\/shops\/(\d+)\/(approve|reject)$/);
   if (match && m === 'POST') return seller.adminReviewShop(d, Number(match[1]), match[2] === 'approve', body['reason']);
+  if ((match = path.match(/^\/admin\/shops\/(\d+)\/(ban|unban)$/)) && m === 'POST') {
+    return social.banShop(d, Number(match[1]), match[2] === 'ban', body['reason']);
+  }
+  if (path === '/admin/users' && m === 'GET') return social.adminUsers(d, query);
+  if ((match = path.match(/^\/admin\/users\/(\d+)\/(lock|unlock)$/)) && m === 'POST') {
+    return social.lockUser(d, Number(match[1]), match[2] === 'lock', body['reason']);
+  }
+  if (path === '/admin/products' && m === 'GET') return social.adminProducts(d, query);
+  if ((match = path.match(/^\/admin\/products\/(\d+)\/(ban|unban)$/)) && m === 'POST') {
+    return social.banProduct(d, Number(match[1]), match[2] === 'ban', body['reason']);
+  }
+  if (path === '/admin/banners' && m === 'GET') return social.allBanners(d);
+  if (path === '/admin/banners' && m === 'POST') return social.saveBanner(d, null, body);
+  if ((match = path.match(/^\/admin\/banners\/(\d+)$/))) {
+    if (m === 'PUT') return social.saveBanner(d, Number(match[1]), body);
+    if (m === 'DELETE') return social.deleteBanner(d, Number(match[1]));
+  }
+  if (path === '/admin/stats' && m === 'GET') return social.overview(d, query);
+  if (path === '/admin/vouchers' && m === 'GET') return promotion.listVouchers(d, null, query);
+  if (path === '/admin/vouchers' && m === 'POST') return promotion.createVoucher(d, null, body);
+  if ((match = path.match(/^\/admin\/vouchers\/(\d+)\/disable$/)) && m === 'POST') return promotion.disableVoucher(d, null, Number(match[1]));
+  if (path === '/admin/flash-sales' && m === 'GET') return promotion.adminFlashSales(d, query);
+  if (path === '/admin/flash-sales' && m === 'POST') return promotion.createFlashSale(d, body);
+  if ((match = path.match(/^\/admin\/flash-sales\/(\d+)\/cancel$/)) && m === 'POST') return promotion.cancelFlashSale(d, Number(match[1]));
   return fail(404, 'NOT_FOUND');
 }
 
@@ -232,6 +317,7 @@ function adminRoute(d: MockDb, m: string, path: string, body: Record<string, unk
 function login(d: MockDb, body: Record<string, unknown>): MockResult {
   const user = d.users.find((u) => u.email === str(body['email']).toLowerCase());
   if (!user || user.password !== body['password']) return fail(401, 'INVALID_CREDENTIALS');
+  if (user.status === 'LOCKED') return fail(403, 'ACCOUNT_LOCKED');
   d.session = user.id;
   d.save();
   return ok(authResponse(user));

@@ -9,6 +9,7 @@ import {
   OrderStatus,
   OrderStatusCounts,
   Page,
+  PickupAddress,
   ProductInput,
   SellerAction,
   SellerDashboard,
@@ -39,6 +40,10 @@ export class SellerApi {
 
   updateShop(body: ShopInfoInput): Observable<MyShop> {
     return this.http.put<ApiResponse<MyShop>>(`${this.base}/shop`, body).pipe(map((r) => r.data));
+  }
+
+  updatePickupAddress(body: PickupAddress): Observable<MyShop> {
+    return this.http.put<ApiResponse<MyShop>>(`${this.base}/shop/pickup-address`, body).pipe(map((r) => r.data));
   }
 
   // ----- Sản phẩm

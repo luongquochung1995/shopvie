@@ -102,9 +102,10 @@ test('seller opens a shop, lists a product with variants and fulfils an order', 
   await expect(order.getByText('Đã giao', { exact: true })).toBeVisible();
   await expect(order.getByRole('button', { name: 'Hủy đơn' })).toHaveCount(0);
 
-  // Chi tiết đơn: lịch sử 4 bước, COD đã thanh toán
+  // Chi tiết đơn: lịch sử 4 bước, hành trình vận chuyển 3 bước, COD đã thanh toán
   await order.getByRole('link', { name: 'Chi tiết' }).click();
-  await expect(page.locator('ol li')).toHaveCount(4);
+  await expect(page.getByRole('region', { name: 'Trạng thái đơn hàng' }).locator('ol li')).toHaveCount(4);
+  await expect(page.getByRole('region', { name: 'Thông tin vận chuyển' }).locator('ol li')).toHaveCount(3);
   await expect(page.getByText('Đã thanh toán')).toBeVisible();
 
   // 6. Dashboard: doanh số = giá sản phẩm (không gồm phí ship), top sản phẩm là sản phẩm vừa bán

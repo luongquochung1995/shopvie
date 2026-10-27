@@ -36,7 +36,18 @@
     "sellerOrders": "Đơn hàng | Kênh Người Bán",
     "sellerOrderDetail": "Chi tiết đơn hàng | Kênh Người Bán",
     "sellerShop": "Hồ sơ shop | Kênh Người Bán",
-    "adminShops": "Duyệt shop | Quản trị ShopVie"
+    "adminShops": "Duyệt shop | Quản trị ShopVie",
+    "paymentResult": "Kết quả thanh toán | ShopVie",
+    "paymentSandbox": "Cổng thanh toán thử nghiệm | ShopVie",
+    "searchFor": "{{q}} | Tìm kiếm | ShopVie",
+    "sellerVouchers": "Voucher của shop | Kênh Người Bán",
+    "sellerReviews": "Đánh giá | Kênh Người Bán",
+    "adminVouchers": "Voucher sàn | Quản trị ShopVie",
+    "adminFlashSales": "Flash sale | Quản trị ShopVie",
+    "adminDashboard": "Tổng quan | Quản trị ShopVie",
+    "adminProducts": "Sản phẩm | Quản trị ShopVie",
+    "adminUsers": "Tài khoản | Quản trị ShopVie",
+    "adminBanners": "Banner | Quản trị ShopVie"
   },
   "language": {
     "label": "Ngôn ngữ",
@@ -60,7 +71,8 @@
     "cartWithCount": "Giỏ hàng: {{count}} sản phẩm",
     "myOrders": "Đơn mua",
     "openShop": "Mở shop bán hàng",
-    "adminShops": "Duyệt shop"
+    "suggestions": "Gợi ý tìm kiếm",
+    "admin": "Quản trị"
   },
   "footer": {
     "support": {
@@ -167,7 +179,8 @@
     "category": "Danh mục",
     "description": "Mô tả sản phẩm",
     "selectVariant": "Vui lòng chọn phân loại hàng",
-    "addedToCart": "Sản phẩm đã được thêm vào giỏ hàng"
+    "addedToCart": "Sản phẩm đã được thêm vào giỏ hàng",
+    "chatNow": "Chat ngay"
   },
   "auth": {
     "email": "Email",
@@ -248,8 +261,15 @@
     }
   },
   "search": {
-    "title": "Tìm kiếm “{{q}}”",
-    "comingSoon": "Tính năng tìm kiếm sản phẩm sẽ sớm ra mắt. Bạn có thể duyệt theo danh mục ở trang chủ."
+    "resultsFor": "Kết quả tìm kiếm cho từ khóa",
+    "count": "({{count}} sản phẩm)",
+    "enterKeyword": "Nhập từ khóa để tìm sản phẩm",
+    "unavailable": "Tìm kiếm đang tạm gián đoạn",
+    "noResults": "Không tìm thấy sản phẩm nào cho “{{q}}”",
+    "noResultsHint": "Thử từ khóa khác, ngắn hơn hoặc bỏ bớt bộ lọc.",
+    "sort": {
+      "relevance": "Liên quan"
+    }
   },
   "notFound": {
     "title": "Không tìm thấy trang",
@@ -290,7 +310,38 @@
     "INVALID_SHOP_STATUS": "Trạng thái shop không cho phép thao tác này.",
     "CATEGORY_NOT_LEAF": "Vui lòng chọn danh mục cấp cuối cùng.",
     "PRODUCT_BANNED": "Sản phẩm đã bị quản trị viên khóa.",
-    "SKU_ALREADY_EXISTS": "Mã SKU đã được sử dụng."
+    "SKU_ALREADY_EXISTS": "Mã SKU đã được sử dụng.",
+    "ORDER_AWAITING_PAYMENT": "Đơn hàng chưa được thanh toán.",
+    "PAYMENT_NOT_FOUND": "Không tìm thấy giao dịch thanh toán.",
+    "PAYMENT_EXPIRED": "Đơn hàng đã quá hạn thanh toán.",
+    "PAYMENT_NOT_REQUIRED": "Đơn hàng không cần thanh toán thêm.",
+    "PAYMENT_PROVIDER_ERROR": "Cổng thanh toán đang gián đoạn, vui lòng thử lại.",
+    "SHIPPING_PROVIDER_ERROR": "Đơn vị vận chuyển đang gián đoạn, vui lòng thử lại.",
+    "INVALID_ADDRESS": "Địa chỉ không hợp lệ.",
+    "TOO_MANY_REQUESTS": "Bạn thao tác quá nhanh, vui lòng thử lại sau giây lát",
+    "REVIEW_NOT_ALLOWED": "Chỉ đánh giá được sản phẩm trong đơn đã hoàn thành",
+    "REVIEW_ALREADY_EXISTS": "Bạn đã đánh giá sản phẩm này rồi",
+    "REVIEW_NOT_FOUND": "Không tìm thấy đánh giá",
+    "REVIEW_ALREADY_REPLIED": "Đánh giá này đã được phản hồi",
+    "SEARCH_UNAVAILABLE": "Tìm kiếm đang tạm gián đoạn",
+    "VOUCHER_NOT_FOUND": "Mã voucher không tồn tại",
+    "VOUCHER_CODE_EXISTS": "Mã voucher đã được dùng, hãy chọn mã khác",
+    "VOUCHER_NOT_APPLICABLE": "Voucher không áp dụng được cho đơn này",
+    "VOUCHER_EXHAUSTED": "Voucher đã hết lượt sử dụng",
+    "FLASH_SALE_NOT_FOUND": "Không tìm thấy sản phẩm flash sale",
+    "FLASH_SALE_NOT_ACTIVE": "Phiên flash sale chưa bắt đầu hoặc đã kết thúc",
+    "FLASH_SALE_SOLD_OUT": "Sản phẩm flash sale đã hết suất",
+    "FLASH_SALE_LIMIT_REACHED": "Bạn đã mua tối đa số lượng cho phép của sản phẩm này",
+    "FLASH_SALE_RESERVATION_NOT_FOUND": "Không tìm thấy lượt mua flash sale",
+    "FLASH_SALE_UNAVAILABLE": "Flash sale đang quá tải, vui lòng thử lại",
+    "INVALID_PRODUCT_STATUS": "Trạng thái sản phẩm không cho phép thao tác này",
+    "INVALID_USER_STATUS": "Trạng thái tài khoản không cho phép thao tác này",
+    "CANNOT_LOCK_ADMIN": "Không thể khóa tài khoản quản trị",
+    "NOTIFICATION_NOT_FOUND": "Không tìm thấy thông báo",
+    "CONVERSATION_NOT_FOUND": "Không tìm thấy cuộc trò chuyện",
+    "CHAT_WITH_OWN_SHOP": "Bạn không thể chat với shop của chính mình",
+    "BANNER_NOT_FOUND": "Không tìm thấy banner",
+    "USER_NOT_FOUND": "Không tìm thấy tài khoản"
   },
   "cart": {
     "title": "Giỏ hàng",
@@ -346,6 +397,29 @@
       "amount": "Tổng thanh toán khi nhận hàng:",
       "viewOrders": "Xem đơn mua",
       "continue": "Tiếp tục mua sắm"
+    },
+    "onlineHint": "Bạn sẽ được chuyển sang cổng thanh toán. Đơn chưa thanh toán sau 15 phút sẽ tự động bị hủy.",
+    "placeAndPay": "Đặt hàng & thanh toán",
+    "voucher": "Voucher",
+    "voucherPlaceholder": "Nhập mã voucher",
+    "voucherCode": "Mã voucher",
+    "applyVoucher": "Áp dụng",
+    "pickVoucher": "Chọn voucher",
+    "removeVoucher": "Bỏ voucher {{code}}",
+    "noVouchers": "Chưa có voucher nào dùng được cho đơn này",
+    "shopVoucher": "Voucher shop",
+    "platformVoucher": "Voucher ShopVie",
+    "voucherDiscount": "Voucher giảm giá",
+    "voucherMinOrder": "Đơn tối thiểu {{amount}}",
+    "voucherReason": {
+      "NOT_STARTED": "Voucher chưa đến thời gian sử dụng",
+      "EXPIRED": "Voucher đã hết hạn",
+      "DISABLED": "Voucher đã ngừng áp dụng",
+      "EXHAUSTED": "Voucher đã hết lượt sử dụng",
+      "USER_LIMIT": "Bạn đã dùng hết lượt của voucher này",
+      "MIN_ORDER": "Đơn hàng chưa đạt giá trị tối thiểu của voucher",
+      "SHOP_NOT_IN_CART": "Voucher của shop không có sản phẩm trong đơn",
+      "DUPLICATE": "Mỗi đơn chỉ dùng 1 voucher sàn và 1 voucher mỗi shop"
     }
   },
   "orders": {
@@ -361,7 +435,14 @@
     "back": "Trở lại",
     "code": "Mã đơn hàng:",
     "shippingAddress": "Địa chỉ nhận hàng",
-    "timeline": "Trạng thái đơn hàng"
+    "timeline": "Trạng thái đơn hàng",
+    "awaitingPayment": "Chờ thanh toán",
+    "payWithin": "Thanh toán trong",
+    "payNow": "Thanh toán ngay",
+    "awaitingHint": "Đơn hàng chưa được thanh toán. Đơn sẽ tự động hủy sau",
+    "receivedHint": "Kiểm tra hàng rồi xác nhận để hoàn tất đơn và đánh giá sản phẩm.",
+    "received": "Đã nhận hàng",
+    "completed": "Đơn hàng đã hoàn thành"
   },
   "orderStatus": {
     "PENDING": "Chờ xác nhận",
@@ -394,7 +475,9 @@
       "orders": "Đơn hàng",
       "products": "Sản phẩm của tôi",
       "addProduct": "Thêm sản phẩm",
-      "shop": "Hồ sơ shop"
+      "shop": "Hồ sơ shop",
+      "vouchers": "Voucher",
+      "reviews": "Đánh giá"
     },
     "banner": {
       "pending": "Shop của bạn đang chờ quản trị viên duyệt. Sau khi được duyệt, bạn có thể đăng bán sản phẩm.",
@@ -434,7 +517,15 @@
       "resubmit": "Gửi duyệt lại",
       "save": "Lưu",
       "resubmitted": "Đã gửi duyệt lại shop",
-      "saved": "Đã lưu thông tin shop"
+      "saved": "Đã lưu thông tin shop",
+      "pickup": {
+        "title": "Địa chỉ lấy hàng",
+        "edit": "Sửa",
+        "add": "Thêm địa chỉ",
+        "missing": "Chưa có địa chỉ lấy hàng: phí ship đang tính theo địa chỉ mặc định và đơn vị vận chuyển không biết nơi lấy hàng.",
+        "hint": "Đơn vị vận chuyển đến địa chỉ này lấy hàng; phí ship của người mua tính từ đây.",
+        "saved": "Đã lưu địa chỉ lấy hàng"
+      }
     },
     "dashboard": {
       "todo": "Danh sách cần làm",
@@ -500,7 +591,9 @@
       "shown": "Sản phẩm đã được hiển thị",
       "hidden": "Đã ẩn sản phẩm",
       "confirmDelete": "Xóa sản phẩm \"{{name}}\"? Sản phẩm sẽ bị gỡ khỏi sàn và giỏ hàng của người mua.",
-      "deleted": "Đã xóa sản phẩm"
+      "deleted": "Đã xóa sản phẩm",
+      "banReason": "Bị khóa: {{reason}}",
+      "bannedNotice": "Sản phẩm đã bị quản trị viên khóa và không hiển thị với người mua. Lý do: {{reason}}"
     },
     "productForm": {
       "back": "Sản phẩm của tôi",
@@ -610,7 +703,17 @@
         "SHIP": "Đã giao cho đơn vị vận chuyển",
         "DELIVER": "Đã cập nhật: giao hàng thành công",
         "CANCEL": "Đã hủy đơn hàng"
-      }
+      },
+      "awaitingPaymentHint": "Người mua chưa thanh toán online. Bạn có thể xác nhận đơn sau khi thanh toán thành công."
+    },
+    "reviews": {
+      "title": "Đánh giá của khách",
+      "unrepliedOnly": "Chỉ đánh giá chưa phản hồi",
+      "empty": "Chưa có đánh giá nào",
+      "yourReply": "Phản hồi của bạn",
+      "reply": "Phản hồi",
+      "cancel": "Hủy",
+      "send": "Gửi phản hồi"
     }
   },
   "admin": {
@@ -626,7 +729,329 @@
       "rejectTitle": "Từ chối shop \"{{name}}\"",
       "reasonPlaceholder": "Lý do từ chối (gửi tới người bán)",
       "approved": "Đã duyệt shop {{name}}",
-      "rejected": "Đã từ chối shop {{name}}"
+      "rejected": "Đã từ chối shop {{name}}",
+      "ban": "Khóa shop",
+      "unban": "Mở khóa",
+      "banTitle": "Khóa shop \"{{name}}\"",
+      "banReason": "Lý do khóa: {{reason}}",
+      "banned": "Đã khóa shop {{name}}",
+      "unbanned": "Đã mở khóa shop {{name}}"
+    },
+    "nav": {
+      "label": "Quản trị",
+      "shops": "Duyệt shop",
+      "vouchers": "Voucher sàn",
+      "flashSales": "Flash sale",
+      "dashboard": "Tổng quan",
+      "products": "Sản phẩm",
+      "users": "Tài khoản",
+      "banners": "Banner"
+    },
+    "flashSales": {
+      "title": "Phiên flash sale",
+      "create": "Tạo phiên",
+      "empty": "Chưa có phiên flash sale nào",
+      "cancelled": "Đã hủy",
+      "running": "Đang chạy",
+      "notRunning": "Chưa chạy / đã kết thúc",
+      "cancel": "Hủy phiên",
+      "soldOf": "đã bán {{sold}}/{{quota}}",
+      "name": "Tên phiên",
+      "startAt": "Bắt đầu",
+      "endAt": "Kết thúc",
+      "variantId": "ID phân loại (SKU)",
+      "salePrice": "Giá sale (₫)",
+      "quota": "Số suất",
+      "perUser": "Mỗi người",
+      "removeItem": "Bỏ dòng",
+      "addItem": "Thêm sản phẩm",
+      "close": "Đóng",
+      "save": "Tạo phiên",
+      "created": "Đã tạo phiên flash sale",
+      "confirmCancel": "Hủy phiên \"{{name}}\"? Người mua sẽ không mua được nữa."
+    },
+    "reasonPlaceholder": "Lý do (người dùng sẽ thấy)",
+    "dashboard": {
+      "title": "Tổng quan",
+      "period": "Khoảng thời gian",
+      "lastDays": "{{count}} ngày",
+      "loadError": "Không tải được thống kê",
+      "gmv": "GMV",
+      "orders": "Đơn hàng",
+      "newUsers": "Người dùng mới",
+      "totalUsers": "Tổng {{count}} tài khoản",
+      "activeShops": "Shop đang hoạt động",
+      "pendingShops": "{{count}} shop chờ duyệt",
+      "chart": "GMV & đơn hàng theo ngày",
+      "ordersByStatus": "Đơn theo trạng thái",
+      "usersByRole": "Tài khoản theo vai trò",
+      "lockedUsers": "Đang bị khóa",
+      "productsByStatus": "Sản phẩm theo trạng thái"
+    },
+    "users": {
+      "title": "Tài khoản",
+      "searchPlaceholder": "Tìm theo email, tên, số điện thoại",
+      "roleFilter": "Lọc theo vai trò",
+      "statusFilter": "Lọc theo trạng thái",
+      "allRoles": "Mọi vai trò",
+      "allStatuses": "Mọi trạng thái",
+      "search": "Tìm",
+      "empty": "Không có tài khoản phù hợp",
+      "col": {
+        "user": "Tài khoản",
+        "role": "Vai trò",
+        "status": "Trạng thái",
+        "createdAt": "Ngày tạo",
+        "actions": "Thao tác"
+      },
+      "role": {
+        "BUYER": "Người mua",
+        "SELLER": "Người bán",
+        "ADMIN": "Quản trị"
+      },
+      "status": {
+        "ACTIVE": "Hoạt động",
+        "LOCKED": "Đã khóa"
+      },
+      "lock": "Khóa",
+      "unlock": "Mở khóa",
+      "lockTitle": "Khóa tài khoản {{name}}",
+      "locked": "Đã khóa tài khoản {{name}}",
+      "unlocked": "Đã mở khóa tài khoản {{name}}"
+    },
+    "products": {
+      "title": "Hậu kiểm sản phẩm",
+      "tabs": "Lọc theo trạng thái",
+      "all": "Tất cả",
+      "searchPlaceholder": "Tìm theo tên sản phẩm",
+      "search": "Tìm",
+      "empty": "Không có sản phẩm phù hợp",
+      "sold": "đã bán {{count}}",
+      "banReason": "Lý do khóa: {{reason}}",
+      "ban": "Khóa",
+      "unban": "Mở khóa",
+      "banTitle": "Khóa sản phẩm \"{{name}}\"",
+      "banned": "Đã khóa sản phẩm",
+      "unbanned": "Đã mở khóa sản phẩm"
+    },
+    "banners": {
+      "title": "Banner trang chủ",
+      "create": "Thêm banner",
+      "editTitle": "Sửa banner",
+      "empty": "Chưa có banner nào",
+      "emptyHint": "Trang chủ đang dùng banner mẫu.",
+      "always": "Luôn hiển thị",
+      "active": "Đang bật",
+      "inactive": "Đang tắt",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "saved": "Đã lưu banner",
+      "confirmDelete": "Xóa banner \"{{title}}\"?",
+      "field": {
+        "title": "Tiêu đề",
+        "imageUrl": "URL ảnh (tỉ lệ 2:1)",
+        "linkUrl": "Liên kết (URL hoặc đường dẫn trong site)",
+        "position": "Thứ tự",
+        "active": "Hiển thị",
+        "startsAt": "Bắt đầu (tùy chọn)",
+        "endsAt": "Kết thúc (tùy chọn)"
+      }
     }
+  },
+  "payment": {
+    "sandbox": {
+      "gateway": "Cổng thanh toán {{name}}",
+      "notice": "Môi trường thử nghiệm — không trừ tiền thật",
+      "merchant": "Người bán",
+      "reference": "Mã giao dịch",
+      "amount": "Số tiền",
+      "pay": "Thanh toán thành công",
+      "cancel": "Hủy giao dịch"
+    },
+    "result": {
+      "invalidTitle": "Không xác thực được kết quả thanh toán",
+      "invalidHint": "Vui lòng kiểm tra trạng thái đơn hàng trong mục Đơn mua.",
+      "viewOrders": "Xem đơn mua",
+      "paidTitle": "Thanh toán thành công!",
+      "paidHint": "Đã thanh toán {{count}} đơn hàng. Shop sẽ sớm xác nhận đơn của bạn.",
+      "amount": "Số tiền đã thanh toán:",
+      "cancelledTitle": "Đơn hàng đã bị hủy",
+      "cancelledHint": "Đơn đã quá hạn thanh toán hoặc đã bị hủy. Tồn kho đã được hoàn lại.",
+      "codTitle": "Đơn hàng thanh toán khi nhận hàng",
+      "checking": "Đang xác nhận kết quả thanh toán...",
+      "failedTitle": "Thanh toán chưa thành công",
+      "pendingTitle": "Chưa nhận được kết quả thanh toán",
+      "retryHint": "Bạn có thể thanh toán lại trước khi đơn hết hạn.",
+      "deadline": "Thời gian còn lại:",
+      "retry": "Thanh toán lại {{amount}}",
+      "continue": "Tiếp tục mua sắm"
+    }
+  },
+  "shipment": {
+    "title": "Thông tin vận chuyển",
+    "carrier": "Đơn vị vận chuyển",
+    "trackingCode": "Mã vận đơn",
+    "eta": "Dự kiến giao",
+    "provider": {
+      "GHN": "Giao Hàng Nhanh",
+      "INTERNAL": "ShopVie Express"
+    },
+    "status": {
+      "CREATED": "Chờ lấy hàng",
+      "PICKED_UP": "Đã lấy hàng",
+      "IN_TRANSIT": "Đang vận chuyển",
+      "DELIVERED": "Giao hàng thành công",
+      "FAILED": "Giao không thành công",
+      "RETURNED": "Đang hoàn hàng",
+      "CANCELLED": "Đã hủy vận đơn"
+    }
+  },
+  "voucher": {
+    "percent": "Giảm {{value}}%",
+    "percentMax": "Giảm {{value}}% tối đa {{max}}",
+    "freeship": "Miễn phí vận chuyển tới {{amount}}",
+    "fixed": "Giảm {{amount}}"
+  },
+  "flashSale": {
+    "endsIn": "Kết thúc trong",
+    "startsIn": "Bắt đầu sau",
+    "soldOut": "Đã bán hết",
+    "almostGone": "Sắp cháy hàng",
+    "sold": "Đã bán {{count}}",
+    "processing": "Đang xử lý...",
+    "upcoming": "Sắp mở bán",
+    "buyNow": "Mua ngay",
+    "needAddress": "Thêm địa chỉ nhận hàng mặc định để mua flash sale",
+    "reserved": "Đã giữ suất, đang tạo đơn hàng...",
+    "success": "Đặt hàng flash sale thành công!",
+    "slow": "Đơn đang được xử lý, kiểm tra lại trong mục Đơn mua sau ít phút",
+    "failed": {
+      "default": "Không tạo được đơn flash sale, suất đã được trả lại",
+      "OUT_OF_STOCK": "Sản phẩm đã hết hàng, suất đã được trả lại",
+      "PRODUCT_UNAVAILABLE": "Sản phẩm đã ngừng bán, suất đã được trả lại",
+      "ADDRESS_NOT_FOUND": "Không tìm thấy địa chỉ nhận hàng",
+      "FLASH_SALE_SOLD_OUT": "Sản phẩm flash sale đã hết suất",
+      "PUBLISH_FAILED": "Hệ thống đang bận, vui lòng thử lại"
+    }
+  },
+  "reviews": {
+    "title": "Đánh giá sản phẩm",
+    "outOf5": "trên 5",
+    "filter": "Lọc đánh giá",
+    "all": "Tất cả",
+    "stars": "{{count}} sao",
+    "withMedia": "Có hình ảnh",
+    "loadError": "Không tải được đánh giá",
+    "empty": "Chưa có đánh giá nào",
+    "variant": "Phân loại: {{name}}",
+    "sellerReply": "Phản hồi của người bán",
+    "loading": "Đang tải đánh giá...",
+    "rateOrder": "Đánh giá sản phẩm",
+    "write": "Đánh giá",
+    "rating": "Chất lượng sản phẩm",
+    "ratingText": {
+      "1": "Tệ",
+      "2": "Không hài lòng",
+      "3": "Bình thường",
+      "4": "Hài lòng",
+      "5": "Tuyệt vời"
+    },
+    "contentPlaceholder": "Chia sẻ cảm nhận của bạn về sản phẩm (không bắt buộc)",
+    "content": "Nội dung đánh giá",
+    "cancel": "Hủy",
+    "submit": "Gửi đánh giá",
+    "thanks": "Cảm ơn bạn đã đánh giá!"
+  },
+  "voucherAdmin": {
+    "platformTitle": "Voucher sàn",
+    "shopTitle": "Voucher của shop",
+    "create": "Tạo voucher",
+    "empty": "Chưa có voucher nào",
+    "col": {
+      "voucher": "Voucher",
+      "value": "Mức giảm",
+      "usage": "Đã dùng",
+      "period": "Thời gian",
+      "status": "Trạng thái",
+      "actions": "Thao tác"
+    },
+    "minOrder": "Đơn tối thiểu {{amount}}",
+    "perUser": "Mỗi người {{count}} lần",
+    "status": {
+      "DISABLED": "Đã ngừng",
+      "UPCOMING": "Sắp diễn ra",
+      "RUNNING": "Đang chạy",
+      "ENDED": "Đã kết thúc"
+    },
+    "disable": "Ngừng",
+    "codeHint": "4-20 ký tự chữ hoặc số, duy nhất toàn sàn",
+    "field": {
+      "code": "Mã voucher",
+      "name": "Tên chương trình",
+      "type": "Loại",
+      "percent": "Phần trăm giảm (%)",
+      "amount": "Số tiền giảm (₫)",
+      "minOrder": "Đơn tối thiểu (₫)",
+      "maxDiscount": "Giảm tối đa (₫)",
+      "usageLimit": "Tổng lượt dùng",
+      "perUserLimit": "Lượt mỗi người",
+      "startAt": "Bắt đầu",
+      "endAt": "Kết thúc"
+    },
+    "type": {
+      "FIXED": "Giảm tiền",
+      "PERCENT": "Giảm %",
+      "FREESHIP": "Miễn phí vận chuyển"
+    },
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "created": "Đã tạo voucher",
+    "confirmDisable": "Ngừng voucher {{code}}? Người mua sẽ không dùng được mã này nữa."
+  },
+  "notifications": {
+    "bell": "Thông báo",
+    "bellWithCount": "Thông báo: {{count}} chưa đọc",
+    "title": "Thông báo",
+    "markAllRead": "Đánh dấu đã đọc tất cả",
+    "empty": "Chưa có thông báo nào",
+    "unread": "Chưa đọc",
+    "new": "Thông báo mới",
+    "reason": "Lý do: {{reason}}",
+    "type": {
+      "ORDER_STATUS": "Đơn hàng {{order}}: {{status}}",
+      "ORDER_CANCELLED_BY_BUYER": "Người mua đã hủy đơn hàng {{order}}",
+      "NEW_ORDER": "Bạn có đơn hàng mới {{order}} ({{total}})",
+      "PAYMENT_SUCCEEDED": "Thanh toán thành công đơn hàng {{order}} ({{total}})",
+      "SHOP_APPROVED": "Shop \"{{shopName}}\" đã được duyệt, bạn có thể bắt đầu bán hàng",
+      "SHOP_REJECTED": "Shop \"{{shopName}}\" chưa được duyệt",
+      "SHOP_BANNED": "Shop \"{{shopName}}\" đã bị khóa",
+      "SHOP_UNBANNED": "Shop \"{{shopName}}\" đã được mở khóa",
+      "PRODUCT_BANNED": "Sản phẩm \"{{productName}}\" đã bị khóa",
+      "PRODUCT_UNBANNED": "Sản phẩm \"{{productName}}\" đã được mở khóa"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "open": "Mở chat",
+    "openWithCount": "Mở chat: {{count}} tin chưa đọc",
+    "close": "Đóng chat",
+    "conversations": "Cuộc trò chuyện",
+    "empty": "Chưa có cuộc trò chuyện nào. Bấm \"Chat ngay\" ở trang sản phẩm để hỏi shop.",
+    "customer": "Khách",
+    "noMessages": "Chưa có tin nhắn",
+    "back": "Quay lại danh sách",
+    "older": "Xem tin cũ hơn",
+    "seen": "Đã xem",
+    "startHint": "Gửi lời chào để bắt đầu trò chuyện",
+    "placeholder": "Nhập tin nhắn...",
+    "message": "Tin nhắn",
+    "send": "Gửi",
+    "pick": "Chọn một cuộc trò chuyện"
+  },
+  "seo": {
+    "home": "ShopVie - sàn thương mại điện tử: mua sắm online hàng chính hãng giá tốt, Flash Sale mỗi ngày, voucher miễn phí vận chuyển.",
+    "category": "Mua {{name}} giá tốt, chính hãng tại ShopVie. Nhiều mẫu mới, giao nhanh toàn quốc, đổi trả dễ dàng."
   }
 }

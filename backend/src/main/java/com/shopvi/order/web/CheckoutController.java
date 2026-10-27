@@ -1,5 +1,6 @@
 package com.shopvi.order.web;
 
+import com.shopvi.common.ratelimit.RateLimit;
 import com.shopvi.common.security.CurrentUserId;
 import com.shopvi.common.web.ApiResponse;
 import com.shopvi.order.application.CheckoutService;
@@ -15,6 +16,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -36,11 +39,13 @@ class CheckoutController {
     private final CheckoutService checkoutService;
 
     @Operation(summary = "Xem trước đơn hàng: nhóm theo shop, tạm tính, phí vận chuyển, tổng tiền",
-            description = "Không truyền addressId thì dùng địa chỉ mặc định. Phí ship tính theo địa chỉ lấy hàng của "
+            description = "Không truyền addressId thì dùng địa chỉ mặc định. voucherCodes: tối đa 1 voucher sàn + 1 voucher "
+                    + "mỗi shop (422 VOUCHER_NOT_APPLICABLE kèm mã + lý do). Phí ship tính theo địa chỉ lấy hàng của "
                     + "shop và địa chỉ nhận (GHN hoặc bảng phí nội bộ). paymentMethods = COD + cổng online đã cấu hình.")
     @PostMapping("/preview")
     ApiResponse<Preview> preview(@CurrentUserId Long userId, @RequestBody(required = false) PreviewRequest req) {
-        return ApiResponse.ok(checkoutService.preview(userId, req == null ? null : req.addressId()));
+        return ApiResponse.ok(checkoutService.preview(userId, req == null ? null : req.addressId(),
+                req == null ? null : req.voucherCodes()));
     }
 
     @Operation(summary = "Đặt hàng: tách đơn theo shop, trừ kho, xóa món đã đặt khỏi giỏ",
@@ -49,10 +54,12 @@ class CheckoutController {
                     + "(paymentExpiresAt) đơn bị hủy và hoàn kho.")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @RateLimit(value = "checkout", key = RateLimit.Key.USER)
     ApiResponse<PlaceOrderResult> placeOrder(@CurrentUserId Long userId, @Valid @RequestBody PlaceOrderRequest req,
                                              HttpServletRequest http) {
         return ApiResponse.ok(checkoutService.placeOrder(userId,
-                new PlaceOrderCommand(req.addressId(), req.paymentMethod(), req.notes(), req.expectedTotal()),
+                new PlaceOrderCommand(req.addressId(), req.paymentMethod(), req.notes(), req.expectedTotal(),
+                        req.voucherCodes()),
                 http.getRemoteAddr()));
     }
 
@@ -70,10 +77,10 @@ class CheckoutController {
         return ApiResponse.ok(checkoutService.retryPayment(userId, checkoutId, http.getRemoteAddr()));
     }
 
-    record PreviewRequest(Long addressId) {
+    record PreviewRequest(Long addressId, @Size(max = 10) List<String> voucherCodes) {
     }
 
     record PlaceOrderRequest(@NotNull Long addressId, @NotBlank String paymentMethod, Map<Long, String> notes,
-                             @PositiveOrZero Long expectedTotal) {
+                             @PositiveOrZero Long expectedTotal, @Size(max = 10) List<String> voucherCodes) {
     }
 }

@@ -23,6 +23,7 @@ import com.shopvi.order.config.OrderProperties;
 import com.shopvi.order.domain.Order;
 import com.shopvi.order.infra.OrderRepository;
 import com.shopvi.payment.PaymentApi;
+import com.shopvi.promotion.PromotionApi;
 import com.shopvi.payment.PaymentChannel;
 import com.shopvi.payment.PaymentLink;
 import com.shopvi.payment.PaymentRequest;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -61,8 +63,10 @@ class CheckoutServiceTest {
     private final PaymentApi payments = mock(PaymentApi.class);
     private final ShippingApi shipping = mock(ShippingApi.class);
     private final OrderRepository orders = mock(OrderRepository.class);
-    private final CheckoutService service = new CheckoutService(cart, catalog, shops, users, payments, shipping,
-            orders, new OrderProperties(30_000), Clock.systemUTC());
+    private final PromotionApi promotions = mock(PromotionApi.class);
+    private final CheckoutService service = new CheckoutService(cart, catalog, shops, users, payments, promotions,
+            shipping, orders, new OrderProperties(30_000), new OrderEvents(mock(ApplicationEventPublisher.class)),
+            Clock.systemUTC());
 
     @BeforeEach
     void setUp() {
@@ -90,7 +94,7 @@ class CheckoutServiceTest {
 
     @Test
     void previewGroupsByShopWithShippingPerShop() {
-        var preview = service.preview(USER, null);
+        var preview = service.preview(USER, null, null);
 
         assertThat(preview.groups()).hasSize(2);
         assertThat(preview.groups().get(0).subtotal()).isEqualTo(250_000);
@@ -103,7 +107,7 @@ class CheckoutServiceTest {
 
     @Test
     void placeOrderSplitsByShopReservesStockInVariantOrderAndClearsCart() {
-        var result = service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", Map.of(2L, "  gọi trước  "), 370_000L), IP);
+        var result = service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", Map.of(2L, "  gọi trước  "), 370_000L, null), IP);
 
         assertThat(result.orders()).hasSize(2);
         assertThat(result.total()).isEqualTo(370_000);
@@ -121,7 +125,7 @@ class CheckoutServiceTest {
 
     @Test
     void priceChangedSinceReviewIsRejectedBeforeTouchingStock() {
-        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, 1L), IP))
+        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, 1L, null), IP))
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.PRICE_CHANGED);
         verify(catalog, never()).reserveStock(anyLong(), anyInt());
     }
@@ -130,7 +134,7 @@ class CheckoutServiceTest {
     void outOfStockDuringReservationPropagatesSoTransactionRollsBack() {
         doThrow(new BusinessException(ErrorCode.OUT_OF_STOCK)).when(catalog).reserveStock(102L, 1);
 
-        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, null), IP))
+        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, null, null), IP))
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.OUT_OF_STOCK);
         verify(orders, never()).save(any());
         verify(cart, never()).removeVariants(any(), any());
@@ -143,14 +147,14 @@ class CheckoutServiceTest {
                 102L, variant(102L, 1L, 50_000, 10),
                 201L, variant(201L, 2L, 20_000, 10)));
 
-        assertThat(service.preview(USER, null).hasUnavailableItems()).isTrue();
-        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, null), IP))
+        assertThat(service.preview(USER, null, null).hasUnavailableItems()).isTrue();
+        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, null, null), IP))
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.OUT_OF_STOCK);
     }
 
     @Test
     void onlineMethodRequiresConfiguredGateway() {
-        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "VNPAY", null, null), IP))
+        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(5L, "VNPAY", null, null, null), IP))
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ErrorCode.PAYMENT_METHOD_NOT_SUPPORTED);
     }
@@ -159,7 +163,7 @@ class CheckoutServiceTest {
     void emptySelectionIsRejected() {
         when(cart.selectedLines(USER)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> service.preview(USER, null))
+        assertThatThrownBy(() -> service.preview(USER, null, null))
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.NO_ITEMS_SELECTED);
     }
 
@@ -167,7 +171,7 @@ class CheckoutServiceTest {
     void addressOfAnotherUserIsNotFound() {
         when(users.findAddress(USER, 99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(99L, "COD", null, null), IP))
+        assertThatThrownBy(() -> service.placeOrder(USER, new PlaceOrderCommand(99L, "COD", null, null, null), IP))
                 .extracting(e -> ((BusinessException) e).getErrorCode()).isEqualTo(ErrorCode.ADDRESS_NOT_FOUND);
     }
 
@@ -176,7 +180,7 @@ class CheckoutServiceTest {
         when(shops.findPickupAddress(1L)).thenReturn(Optional.of(new PickupAddress("S1", "0901", "01", "00004", "x")));
         when(shops.findPickupAddress(2L)).thenReturn(Optional.empty());
 
-        service.preview(USER, null);
+        service.preview(USER, null, null);
 
         ArgumentCaptor<QuoteRequest> quotes = ArgumentCaptor.forClass(QuoteRequest.class);
         verify(shipping, org.mockito.Mockito.times(2)).quote(quotes.capture());
@@ -190,7 +194,7 @@ class CheckoutServiceTest {
     void previewWithoutAddressUsesEstimatedFee() {
         when(users.findDefaultAddress(USER)).thenReturn(Optional.empty());
 
-        var preview = service.preview(USER, null);
+        var preview = service.preview(USER, null, null);
 
         assertThat(preview.shippingFee()).isEqualTo(60_000);
         verify(shipping, never()).quote(any());
@@ -201,8 +205,8 @@ class CheckoutServiceTest {
         when(payments.availableChannels()).thenReturn(Set.of(PaymentChannel.VNPAY));
         when(payments.initiate(any())).thenReturn(new PaymentLink("https://pay.example/x", Instant.parse("2026-10-26T10:15:00Z")));
 
-        var preview = service.preview(USER, null);
-        var result = service.placeOrder(USER, new PlaceOrderCommand(5L, "VNPAY", null, null), IP);
+        var preview = service.preview(USER, null, null);
+        var result = service.placeOrder(USER, new PlaceOrderCommand(5L, "VNPAY", null, null, null), IP);
 
         assertThat(preview.paymentMethods()).containsExactly("COD", "VNPAY");
         assertThat(result.paymentUrl()).isEqualTo("https://pay.example/x");
@@ -216,7 +220,7 @@ class CheckoutServiceTest {
 
     @Test
     void codDoesNotCreatePayment() {
-        var result = service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, null), IP);
+        var result = service.placeOrder(USER, new PlaceOrderCommand(5L, "COD", null, null, null), IP);
 
         assertThat(result.paymentUrl()).isNull();
         verify(payments, never()).initiate(any());

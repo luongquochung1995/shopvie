@@ -75,6 +75,8 @@ export default class SellerLayout {
     { path: '/seller-center/orders', labelKey: 'nav.orders', icon: 'pi-file', exact: false },
     { path: '/seller-center/products', labelKey: 'nav.products', icon: 'pi-box', exact: true },
     { path: '/seller-center/products/new', labelKey: 'nav.addProduct', icon: 'pi-plus-circle', exact: true },
+    { path: '/seller-center/vouchers', labelKey: 'nav.vouchers', icon: 'pi-ticket', exact: true },
+    { path: '/seller-center/reviews', labelKey: 'nav.reviews', icon: 'pi-star', exact: true },
     { path: '/seller-center/shop', labelKey: 'nav.shop', icon: 'pi-shop', exact: true },
   ];
 

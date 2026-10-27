@@ -32,6 +32,9 @@ class MinioObjectStorage implements ObjectStorage {
     /** Tạo bucket + policy đọc public nếu chưa có. MinIO chưa chạy thì chỉ cảnh báo, không chặn khởi động. */
     @EventListener(ApplicationReadyEvent.class)
     void ensureBucket() {
+        if (!properties.manageBucket()) {
+            return;
+        }
         String bucket = properties.bucket();
         try {
             if (!minio.bucketExists(BucketExistsArgs.builder().bucket(bucket).build())) {
@@ -58,7 +61,8 @@ class MinioObjectStorage implements ObjectStorage {
             log.error("Upload to object storage failed: {}", key, ex);
             throw new BusinessException(ErrorCode.STORAGE_UNAVAILABLE);
         }
-        return "%s/%s/%s".formatted(trimTrailingSlash(properties.publicBaseUrl()), properties.bucket(), key);
+        String base = trimTrailingSlash(properties.publicBaseUrl());
+        return properties.urlIncludesBucket() ? "%s/%s/%s".formatted(base, properties.bucket(), key) : base + "/" + key;
     }
 
     private static String trimTrailingSlash(String url) {

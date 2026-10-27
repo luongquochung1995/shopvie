@@ -6,3 +6,8 @@ body {
   background-color: #f5f5f5;
   color: #222;
 }
+
+/* Header được ghim: cuộn tới anchor / focus không bị header che */
+html {
+  scroll-padding-top: var(--app-header-h, 0px);
+}

@@ -58,10 +58,12 @@ import { DivisionsService } from '../divisions.service';
           <small class="text-red-600">{{ t('detailError') }}</small>
         }
       </label>
-      <label class="flex items-center gap-2 text-sm" [class.opacity-60]="lockDefault()">
-        <p-checkbox formControlName="isDefault" [binary]="true" />
-        {{ t('setDefault') }}
-      </label>
+      @if (showDefault()) {
+        <label class="flex items-center gap-2 text-sm" [class.opacity-60]="lockDefault()">
+          <p-checkbox formControlName="isDefault" [binary]="true" />
+          {{ t('setDefault') }}
+        </label>
+      }
 
       <div class="flex justify-end gap-2">
         <button pButton type="button" [text]="true" severity="secondary" (click)="cancelled.emit()">{{ 'common.back' | transloco }}</button>
@@ -77,6 +79,8 @@ export class AddressForm {
   /** Địa chỉ đang sửa (null = thêm mới). */
   readonly address = input<Address | null>(null);
   readonly saving = input(false);
+  /** Ẩn ô "đặt làm mặc định" (vd. địa chỉ lấy hàng của shop). */
+  readonly showDefault = input(true);
   readonly saved = output<AddressInput>();
   readonly cancelled = output<void>();
 

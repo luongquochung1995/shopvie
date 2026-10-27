@@ -4,6 +4,7 @@ import static com.shopvi.catalog.infra.ProductSpecs.hasStatus;
 import static com.shopvi.catalog.infra.ProductSpecs.inCategories;
 import static com.shopvi.catalog.infra.ProductSpecs.minPriceAtLeast;
 import static com.shopvi.catalog.infra.ProductSpecs.minPriceAtMost;
+import static com.shopvi.catalog.infra.ProductSpecs.shopNotIn;
 
 import com.shopvi.catalog.application.ProductViews.CategoryRef;
 import com.shopvi.catalog.application.ProductViews.ProductCard;
@@ -19,12 +20,15 @@ import com.shopvi.catalog.infra.ProductRepository;
 import com.shopvi.catalog.infra.ProductVariantRepository;
 import com.shopvi.common.exception.BusinessException;
 import com.shopvi.common.exception.ErrorCode;
+import com.shopvi.common.web.PageResponse;
 import com.shopvi.shop.ShopApi;
 import com.shopvi.shop.ShopSummary;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -37,15 +41,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ProductQueryService {
 
+    public static final String DETAIL_CACHE = "product-detail";
+    public static final String LIST_CACHE = "product-list";
+
     private final ProductRepository productRepository;
     private final ProductImageRepository imageRepository;
     private final ProductVariantRepository variantRepository;
     private final CategoryQueryService categoryQueryService;
     private final ShopApi shopApi;
 
-    /** Chỉ trả sản phẩm ACTIVE; lọc theo danh mục bao gồm cả danh mục con. */
+    /** Trang danh sách công khai (cache Redis 1 phút theo bộ lọc + trang + sắp xếp; trang chủ và trang danh mục). */
+    @Cacheable(cacheNames = LIST_CACHE, key = "#filter.categoryId() + ':' + #filter.minPrice() + ':' + #filter.maxPrice() + ':'"
+            + " + #pageable.pageNumber + ':' + #pageable.pageSize + ':' + #pageable.sort")
+    public PageResponse<ProductCard> listPage(ProductFilter filter, Pageable pageable) {
+        return PageResponse.from(search(filter, pageable));
+    }
+
+    /** Chỉ trả sản phẩm ACTIVE của shop không bị khóa; lọc theo danh mục bao gồm cả danh mục con. */
     public Page<ProductCard> search(ProductFilter filter, Pageable pageable) {
         Specification<Product> spec = hasStatus(ProductStatus.ACTIVE);
+        Set<Long> bannedShops = shopApi.bannedShopIds();
+        if (!bannedShops.isEmpty()) {
+            spec = spec.and(shopNotIn(bannedShops));
+        }
         if (filter.categoryId() != null) {
             List<Long> categoryIds = categoryQueryService.getTree().selfAndDescendantIds(filter.categoryId());
             if (categoryIds.isEmpty()) {
@@ -69,6 +87,8 @@ public class ProductQueryService {
         return new PageImpl<>(cards, pageable, page.getTotalElements());
     }
 
+    /** Chi tiết sản phẩm (cache Redis theo slug, evict khi sản phẩm thay đổi — xem {@code ProductCacheEvictor}). */
+    @Cacheable(cacheNames = DETAIL_CACHE, key = "#slug")
     public ProductDetail getDetail(String slug) {
         Product p = productRepository.findBySlugAndStatus(slug, ProductStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND));

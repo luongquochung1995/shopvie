@@ -8,7 +8,9 @@ import com.shopvi.shop.ShopSummary;
 import com.shopvi.shop.domain.Shop;
 import com.shopvi.shop.domain.ShopStatus;
 import com.shopvi.shop.infra.ShopRepository;
+import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -50,8 +52,39 @@ public class ShopService implements ShopApi {
     }
 
     @Override
+    @Transactional
+    public void updateRating(Long shopId, BigDecimal ratingAvg) {
+        shopRepository.updateRating(shopId, ratingAvg);
+    }
+
+    @Override
     public Optional<PickupAddress> findPickupAddress(Long shopId) {
         return shopRepository.findById(shopId).flatMap(Shop::pickupAddress);
+    }
+
+    @Override
+    public Optional<Long> findOwnerId(Long shopId) {
+        return shopRepository.findById(shopId).map(Shop::getOwnerId);
+    }
+
+    @Override
+    public Optional<Long> findShopIdOfOwner(Long ownerId) {
+        return shopRepository.findByOwnerId(ownerId).map(Shop::getId);
+    }
+
+    @Override
+    public Set<Long> bannedShopIds() {
+        return shopRepository.findIdsByStatus(ShopStatus.BANNED);
+    }
+
+    @Override
+    public Map<String, Long> countByStatus() {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        for (ShopStatus s : ShopStatus.values()) {
+            counts.put(s.name(), 0L);
+        }
+        shopRepository.countGroupByStatus().forEach(row -> counts.put(((ShopStatus) row[0]).name(), (Long) row[1]));
+        return counts;
     }
 
     @Override

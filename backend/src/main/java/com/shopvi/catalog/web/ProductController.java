@@ -51,8 +51,7 @@ class ProductController {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, ErrorCode.VALIDATION_ERROR.getDefaultMessage(),
                     List.of(new ErrorDetail("minPrice", "must be less than or equal to maxPrice")));
         }
-        var page = productQueryService.search(new ProductFilter(categoryId, minPrice, maxPrice), stable(pageable));
-        return ApiResponse.ok(PageResponse.from(page));
+        return ApiResponse.ok(productQueryService.listPage(new ProductFilter(categoryId, minPrice, maxPrice), stable(pageable)));
     }
 
     @Operation(summary = "Chi tiết sản phẩm theo slug: ảnh, phân loại, SKU, thông tin shop")

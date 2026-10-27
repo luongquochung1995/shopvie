@@ -23,6 +23,7 @@
           "options": {
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
+            "allowedCommonJsDependencies": ["sockjs-client", "url-parse", "inherits", "debug", "eventsource", "faye-websocket"],
             "inlineStyleLanguage": "scss",
             "assets": [
               {

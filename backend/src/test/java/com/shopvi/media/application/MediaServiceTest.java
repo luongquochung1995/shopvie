@@ -30,7 +30,7 @@ class MediaServiceTest {
 
     private final ObjectStorage storage = mock(ObjectStorage.class);
     private final MediaProperties properties = new MediaProperties("http://minio:9000", "http://cdn", "k", "s",
-            "bucket", DataSize.ofKilobytes(1));
+            "bucket", DataSize.ofKilobytes(1), null, null, null);
     private final MediaService service = new MediaService(storage, properties,
             Clock.fixed(Instant.parse("2026-03-15T10:00:00Z"), ZoneOffset.UTC));
 

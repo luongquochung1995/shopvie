@@ -73,6 +73,10 @@ public class Product extends BaseEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    /** Lý do admin khóa (chỉ có khi BANNED). */
+    @Column(name = "ban_reason")
+    private String banReason;
+
     /**
      * Seller đăng sản phẩm mới. Slug tạm thời là duy nhất; service gán slug thật (kèm id) bằng {@link #assignSlug}
      * sau khi có id. Giá min/max được tính lại từ SKU bằng {@link #updatePriceRange}.
@@ -111,6 +115,24 @@ public class Product extends BaseEntity {
             throw new BusinessException(ErrorCode.PRODUCT_BANNED);
         }
         status = visible ? ProductStatus.ACTIVE : ProductStatus.HIDDEN;
+    }
+
+    /** Admin khóa sản phẩm vi phạm (hậu kiểm): ngừng hiển thị, seller không tự mở lại được. */
+    public void ban(String reason) {
+        if (status == ProductStatus.BANNED) {
+            throw new BusinessException(ErrorCode.INVALID_PRODUCT_STATUS);
+        }
+        status = ProductStatus.BANNED;
+        banReason = reason;
+    }
+
+    /** Mở khóa: sản phẩm hiển thị lại (seller có thể ẩn nếu muốn). */
+    public void unban() {
+        if (status != ProductStatus.BANNED) {
+            throw new BusinessException(ErrorCode.INVALID_PRODUCT_STATUS);
+        }
+        status = ProductStatus.ACTIVE;
+        banReason = null;
     }
 
     public void softDelete(Instant now) {

@@ -9,6 +9,8 @@ import { errorKey } from '../../core/api/api-error';
 import { ORDER_STATUSES, OrderStatus, OrderSummary } from '../../core/api/api.models';
 import { OrderApi } from '../../core/api/order.api';
 import { VndPipe } from '../../shared/pipes/vnd.pipe';
+import { PaymentRedirect } from '../../shared/payment-redirect';
+import { Countdown } from '../../shared/ui/countdown';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { OrderItems } from './order-items';
 
@@ -16,7 +18,7 @@ const PAGE_SIZE = 10;
 
 @Component({
   selector: 'app-orders',
-  imports: [RouterLink, TranslocoDirective, ButtonDirective, VndPipe, EmptyState, OrderItems],
+  imports: [RouterLink, TranslocoDirective, ButtonDirective, VndPipe, EmptyState, OrderItems, Countdown],
   template: `
     <ng-container *transloco="let t">
       <h1 class="mb-4 text-lg font-medium">{{ t('orders.title') }}</h1>
@@ -42,7 +44,7 @@ const PAGE_SIZE = 10;
           <article class="rounded-sm border border-gray-100">
             <header class="flex items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 text-sm">
               <span class="flex items-center gap-2 font-medium"><i class="pi pi-shop text-gray-500" aria-hidden="true"></i>{{ order.shop?.name }}</span>
-              <span class="uppercase text-brand-500">{{ t('orderStatus.' + order.status) }}</span>
+              <span class="uppercase text-brand-500">{{ order.awaitingPayment ? t('orders.awaitingPayment') : t('orderStatus.' + order.status) }}</span>
             </header>
             <div class="px-4">
               <app-order-items [items]="order.items" />
@@ -50,6 +52,10 @@ const PAGE_SIZE = 10;
             <footer class="flex flex-col gap-3 border-t border-gray-100 bg-brand-50/30 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
               <span>{{ t('orders.total') }} <b class="text-lg font-medium text-brand-500">{{ order.total | vnd }}</b></span>
               <div class="flex gap-2">
+                @if (order.awaitingPayment && order.paymentExpiresAt) {
+                  <span class="self-center text-xs text-gray-500">{{ t('orders.payWithin') }} <app-countdown [until]="order.paymentExpiresAt" /></span>
+                  <button pButton type="button" size="small" [disabled]="paying() === order.checkoutId" (click)="pay(order)">{{ t('orders.payNow') }}</button>
+                }
                 @if (order.cancellable) {
                   <button pButton type="button" size="small" [outlined]="true" severity="secondary"
                           [disabled]="cancelling() === order.code" (click)="cancel(order)">{{ t('orders.cancel') }}</button>
@@ -89,6 +95,8 @@ export default class Orders {
   protected readonly orders = signal<OrderSummary[]>([]);
   protected readonly loading = signal(false);
   protected readonly cancelling = signal<string | null>(null);
+  protected readonly paying = signal<string | null>(null);
+  private readonly paymentRedirect = inject(PaymentRedirect);
   private readonly page = signal(0);
   private readonly totalPages = signal(0);
   protected readonly hasMore = computed(() => this.page() + 1 < this.totalPages());
@@ -107,6 +115,19 @@ export default class Orders {
     this.fetch(this.page() + 1);
   }
 
+  /** Thanh toán lại cả checkout của đơn (các đơn tách shop cùng lần đặt). */
+  protected pay(order: OrderSummary): void {
+    this.paying.set(order.checkoutId);
+    this.api.retryPayment(order.checkoutId).subscribe({
+      next: (link) => this.paymentRedirect.go(link.paymentUrl),
+      error: (err) => {
+        this.paying.set(null);
+        this.messages.add({ severity: 'error', summary: this.transloco.translate(errorKey(err)) });
+        this.fetch(0);
+      },
+    });
+  }
+
   protected cancel(order: OrderSummary): void {
     if (!confirm(this.transloco.translate('orders.confirmCancel'))) {
       return;
@@ -118,7 +139,7 @@ export default class Orders {
         this.messages.add({ severity: 'success', summary: this.transloco.translate('orders.cancelled') });
         this.orders.update((list) =>
           this.currentTab() === 'ALL' || this.currentTab() === updated.status
-            ? list.map((o) => (o.code === updated.code ? { ...o, status: updated.status, cancellable: updated.cancellable } : o))
+            ? list.map((o) => (o.code === updated.code ? { ...o, status: updated.status, cancellable: updated.cancellable, awaitingPayment: false } : o))
             : list.filter((o) => o.code !== updated.code),
         );
       },

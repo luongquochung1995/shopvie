@@ -8,11 +8,15 @@ import com.shopvi.user.UserAccount;
 import com.shopvi.user.UserApi;
 import com.shopvi.user.UserCredentials;
 import com.shopvi.user.UserRole;
+import com.shopvi.user.UserStats;
+import com.shopvi.user.UserStatus;
 import com.shopvi.user.domain.Address;
 import com.shopvi.user.domain.User;
 import com.shopvi.user.infra.AddressRepository;
 import com.shopvi.user.infra.UserRepository;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -75,6 +79,18 @@ public class UserService implements UserApi {
         }
         user.promoteToSeller();
         return user.toAccount();
+    }
+
+    @Override
+    public UserStats stats(Instant since) {
+        Map<String, Long> byRole = new LinkedHashMap<>();
+        for (UserRole r : UserRole.values()) {
+            byRole.put(r.name(), 0L);
+        }
+        userRepository.countGroupByRole().forEach(row -> byRole.put(((UserRole) row[0]).name(), (Long) row[1]));
+        long total = byRole.values().stream().mapToLong(Long::longValue).sum();
+        return new UserStats(total, byRole, userRepository.countByStatus(UserStatus.LOCKED),
+                userRepository.countByCreatedAtGreaterThanEqual(since));
     }
 
     @Override

@@ -36,7 +36,18 @@
     "sellerOrders": "Orders | Seller Centre",
     "sellerOrderDetail": "Order details | Seller Centre",
     "sellerShop": "Shop profile | Seller Centre",
-    "adminShops": "Shop approval | ShopVie Admin"
+    "adminShops": "Shop approval | ShopVie Admin",
+    "paymentResult": "Payment result | ShopVie",
+    "paymentSandbox": "Test payment gateway | ShopVie",
+    "searchFor": "{{q}} | Search | ShopVie",
+    "sellerVouchers": "Shop vouchers | Seller Centre",
+    "sellerReviews": "Reviews | Seller Centre",
+    "adminVouchers": "Platform vouchers | ShopVie Admin",
+    "adminFlashSales": "Flash sales | ShopVie Admin",
+    "adminDashboard": "Overview | ShopVie Admin",
+    "adminProducts": "Products | ShopVie Admin",
+    "adminUsers": "Accounts | ShopVie Admin",
+    "adminBanners": "Banners | ShopVie Admin"
   },
   "language": {
     "label": "Language",
@@ -60,7 +71,8 @@
     "cartWithCount": "Shopping cart: {{count}} items",
     "myOrders": "My purchases",
     "openShop": "Start selling",
-    "adminShops": "Shop approval"
+    "suggestions": "Search suggestions",
+    "admin": "Admin"
   },
   "footer": {
     "support": {
@@ -167,7 +179,8 @@
     "category": "Category",
     "description": "Product description",
     "selectVariant": "Please select product variation",
-    "addedToCart": "Item has been added to your cart"
+    "addedToCart": "Item has been added to your cart",
+    "chatNow": "Chat now"
   },
   "auth": {
     "email": "Email",
@@ -248,8 +261,15 @@
     }
   },
   "search": {
-    "title": "Search \"{{q}}\"",
-    "comingSoon": "Product search is coming soon. Meanwhile, browse by category from the home page."
+    "resultsFor": "Search results for",
+    "count": "({{count}} products)",
+    "enterKeyword": "Enter a keyword to find products",
+    "unavailable": "Search is temporarily unavailable",
+    "noResults": "No products found for “{{q}}”",
+    "noResultsHint": "Try a different or shorter keyword, or remove some filters.",
+    "sort": {
+      "relevance": "Relevance"
+    }
   },
   "notFound": {
     "title": "Page not found",
@@ -290,7 +310,38 @@
     "INVALID_SHOP_STATUS": "The shop's status doesn't allow this action.",
     "CATEGORY_NOT_LEAF": "Please choose a lowest-level category.",
     "PRODUCT_BANNED": "This product has been banned by an administrator.",
-    "SKU_ALREADY_EXISTS": "This SKU is already in use."
+    "SKU_ALREADY_EXISTS": "This SKU is already in use.",
+    "ORDER_AWAITING_PAYMENT": "This order hasn't been paid yet.",
+    "PAYMENT_NOT_FOUND": "Payment transaction not found.",
+    "PAYMENT_EXPIRED": "The payment deadline has passed.",
+    "PAYMENT_NOT_REQUIRED": "These orders don't need further payment.",
+    "PAYMENT_PROVIDER_ERROR": "The payment gateway is unavailable, please try again.",
+    "SHIPPING_PROVIDER_ERROR": "The shipping carrier is unavailable, please try again.",
+    "INVALID_ADDRESS": "The address is invalid.",
+    "TOO_MANY_REQUESTS": "You are going too fast, please try again in a moment",
+    "REVIEW_NOT_ALLOWED": "You can only review items of completed orders",
+    "REVIEW_ALREADY_EXISTS": "You have already reviewed this item",
+    "REVIEW_NOT_FOUND": "Review not found",
+    "REVIEW_ALREADY_REPLIED": "This review has already been replied to",
+    "SEARCH_UNAVAILABLE": "Search is temporarily unavailable",
+    "VOUCHER_NOT_FOUND": "Voucher code does not exist",
+    "VOUCHER_CODE_EXISTS": "This voucher code is taken, please choose another",
+    "VOUCHER_NOT_APPLICABLE": "This voucher cannot be applied to your order",
+    "VOUCHER_EXHAUSTED": "This voucher has been fully redeemed",
+    "FLASH_SALE_NOT_FOUND": "Flash sale item not found",
+    "FLASH_SALE_NOT_ACTIVE": "This flash sale has not started or has ended",
+    "FLASH_SALE_SOLD_OUT": "This flash sale item is sold out",
+    "FLASH_SALE_LIMIT_REACHED": "You have reached the purchase limit for this item",
+    "FLASH_SALE_RESERVATION_NOT_FOUND": "Flash sale purchase not found",
+    "FLASH_SALE_UNAVAILABLE": "Flash sale is busy, please try again",
+    "INVALID_PRODUCT_STATUS": "The product status does not allow this action",
+    "INVALID_USER_STATUS": "The account status does not allow this action",
+    "CANNOT_LOCK_ADMIN": "Administrator accounts cannot be locked",
+    "NOTIFICATION_NOT_FOUND": "Notification not found",
+    "CONVERSATION_NOT_FOUND": "Conversation not found",
+    "CHAT_WITH_OWN_SHOP": "You cannot chat with your own shop",
+    "BANNER_NOT_FOUND": "Banner not found",
+    "USER_NOT_FOUND": "Account not found"
   },
   "cart": {
     "title": "Shopping cart",
@@ -346,6 +397,29 @@
       "amount": "Amount to pay on delivery:",
       "viewOrders": "View my purchases",
       "continue": "Continue shopping"
+    },
+    "onlineHint": "You'll be redirected to the payment gateway. Orders not paid within 15 minutes are cancelled automatically.",
+    "placeAndPay": "Place order & pay",
+    "voucher": "Voucher",
+    "voucherPlaceholder": "Enter voucher code",
+    "voucherCode": "Voucher code",
+    "applyVoucher": "Apply",
+    "pickVoucher": "Select voucher",
+    "removeVoucher": "Remove voucher {{code}}",
+    "noVouchers": "No vouchers available for this order",
+    "shopVoucher": "Shop voucher",
+    "platformVoucher": "ShopVie voucher",
+    "voucherDiscount": "Voucher discount",
+    "voucherMinOrder": "Min. spend {{amount}}",
+    "voucherReason": {
+      "NOT_STARTED": "This voucher is not valid yet",
+      "EXPIRED": "This voucher has expired",
+      "DISABLED": "This voucher is no longer available",
+      "EXHAUSTED": "This voucher has been fully redeemed",
+      "USER_LIMIT": "You have used up this voucher",
+      "MIN_ORDER": "Your order does not reach the voucher minimum",
+      "SHOP_NOT_IN_CART": "No item from this voucher’s shop in your order",
+      "DUPLICATE": "Only 1 platform voucher and 1 voucher per shop per order"
     }
   },
   "orders": {
@@ -361,7 +435,14 @@
     "back": "Back",
     "code": "Order ID:",
     "shippingAddress": "Delivery address",
-    "timeline": "Order status"
+    "timeline": "Order status",
+    "awaitingPayment": "Awaiting payment",
+    "payWithin": "Pay within",
+    "payNow": "Pay now",
+    "awaitingHint": "This order hasn't been paid yet. It will be cancelled in",
+    "receivedHint": "Check your items, then confirm to complete the order and rate the products.",
+    "received": "Order received",
+    "completed": "Order completed"
   },
   "orderStatus": {
     "PENDING": "To confirm",
@@ -394,7 +475,9 @@
       "orders": "Orders",
       "products": "My products",
       "addProduct": "Add product",
-      "shop": "Shop profile"
+      "shop": "Shop profile",
+      "vouchers": "Vouchers",
+      "reviews": "Reviews"
     },
     "banner": {
       "pending": "Your shop is waiting for approval. Once approved, you can start listing products.",
@@ -434,7 +517,15 @@
       "resubmit": "Resubmit",
       "save": "Save",
       "resubmitted": "Your shop has been resubmitted for approval",
-      "saved": "Shop details saved"
+      "saved": "Shop details saved",
+      "pickup": {
+        "title": "Pickup address",
+        "edit": "Edit",
+        "add": "Add address",
+        "missing": "No pickup address yet: shipping fees use the default location and carriers don't know where to pick up.",
+        "hint": "Carriers pick up orders here; buyers' shipping fees are calculated from this address.",
+        "saved": "Pickup address saved"
+      }
     },
     "dashboard": {
       "todo": "To-do list",
@@ -500,7 +591,9 @@
       "shown": "Product is now visible",
       "hidden": "Product hidden",
       "confirmDelete": "Delete \"{{name}}\"? It will be removed from the marketplace and from buyers' carts.",
-      "deleted": "Product deleted"
+      "deleted": "Product deleted",
+      "banReason": "Banned: {{reason}}",
+      "bannedNotice": "This product has been banned by an administrator and is hidden from buyers. Reason: {{reason}}"
     },
     "productForm": {
       "back": "My products",
@@ -610,7 +703,17 @@
         "SHIP": "Handed over to the carrier",
         "DELIVER": "Marked as delivered",
         "CANCEL": "Order cancelled"
-      }
+      },
+      "awaitingPaymentHint": "The buyer hasn't paid online yet. You can confirm the order once payment succeeds."
+    },
+    "reviews": {
+      "title": "Customer reviews",
+      "unrepliedOnly": "Unreplied only",
+      "empty": "No reviews yet",
+      "yourReply": "Your reply",
+      "reply": "Reply",
+      "cancel": "Cancel",
+      "send": "Send reply"
     }
   },
   "admin": {
@@ -626,7 +729,329 @@
       "rejectTitle": "Reject shop \"{{name}}\"",
       "reasonPlaceholder": "Reason for rejection (sent to the seller)",
       "approved": "Shop {{name}} approved",
-      "rejected": "Shop {{name}} rejected"
+      "rejected": "Shop {{name}} rejected",
+      "ban": "Ban shop",
+      "unban": "Unban",
+      "banTitle": "Ban shop \"{{name}}\"",
+      "banReason": "Ban reason: {{reason}}",
+      "banned": "Shop {{name}} banned",
+      "unbanned": "Shop {{name}} unbanned"
+    },
+    "nav": {
+      "label": "Admin",
+      "shops": "Shop approval",
+      "vouchers": "Platform vouchers",
+      "flashSales": "Flash sales",
+      "dashboard": "Overview",
+      "products": "Products",
+      "users": "Accounts",
+      "banners": "Banners"
+    },
+    "flashSales": {
+      "title": "Flash sales",
+      "create": "New flash sale",
+      "empty": "No flash sales yet",
+      "cancelled": "Cancelled",
+      "running": "Running",
+      "notRunning": "Not running / ended",
+      "cancel": "Cancel sale",
+      "soldOf": "{{sold}}/{{quota}} sold",
+      "name": "Name",
+      "startAt": "Starts",
+      "endAt": "Ends",
+      "variantId": "Variation (SKU) ID",
+      "salePrice": "Sale price (₫)",
+      "quota": "Quota",
+      "perUser": "Per user",
+      "removeItem": "Remove row",
+      "addItem": "Add item",
+      "close": "Close",
+      "save": "Create sale",
+      "created": "Flash sale created",
+      "confirmCancel": "Cancel \"{{name}}\"? Buyers will no longer be able to buy."
+    },
+    "reasonPlaceholder": "Reason (visible to the user)",
+    "dashboard": {
+      "title": "Overview",
+      "period": "Period",
+      "lastDays": "{{count}} days",
+      "loadError": "Could not load statistics",
+      "gmv": "GMV",
+      "orders": "Orders",
+      "newUsers": "New users",
+      "totalUsers": "{{count}} accounts in total",
+      "activeShops": "Active shops",
+      "pendingShops": "{{count}} shops awaiting approval",
+      "chart": "GMV & orders per day",
+      "ordersByStatus": "Orders by status",
+      "usersByRole": "Accounts by role",
+      "lockedUsers": "Locked",
+      "productsByStatus": "Products by status"
+    },
+    "users": {
+      "title": "Accounts",
+      "searchPlaceholder": "Search by email, name, phone",
+      "roleFilter": "Filter by role",
+      "statusFilter": "Filter by status",
+      "allRoles": "All roles",
+      "allStatuses": "All statuses",
+      "search": "Search",
+      "empty": "No matching accounts",
+      "col": {
+        "user": "Account",
+        "role": "Role",
+        "status": "Status",
+        "createdAt": "Created",
+        "actions": "Actions"
+      },
+      "role": {
+        "BUYER": "Buyer",
+        "SELLER": "Seller",
+        "ADMIN": "Admin"
+      },
+      "status": {
+        "ACTIVE": "Active",
+        "LOCKED": "Locked"
+      },
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "lockTitle": "Lock account {{name}}",
+      "locked": "Account {{name}} locked",
+      "unlocked": "Account {{name}} unlocked"
+    },
+    "products": {
+      "title": "Product moderation",
+      "tabs": "Filter by status",
+      "all": "All",
+      "searchPlaceholder": "Search by product name",
+      "search": "Search",
+      "empty": "No matching products",
+      "sold": "{{count}} sold",
+      "banReason": "Ban reason: {{reason}}",
+      "ban": "Ban",
+      "unban": "Unban",
+      "banTitle": "Ban product \"{{name}}\"",
+      "banned": "Product banned",
+      "unbanned": "Product unbanned"
+    },
+    "banners": {
+      "title": "Home banners",
+      "create": "Add banner",
+      "editTitle": "Edit banner",
+      "empty": "No banners yet",
+      "emptyHint": "The home page shows sample banners.",
+      "always": "Always shown",
+      "active": "On",
+      "inactive": "Off",
+      "edit": "Edit",
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saved": "Banner saved",
+      "confirmDelete": "Delete banner \"{{title}}\"?",
+      "field": {
+        "title": "Title",
+        "imageUrl": "Image URL (2:1 ratio)",
+        "linkUrl": "Link (URL or in-site path)",
+        "position": "Order",
+        "active": "Visible",
+        "startsAt": "Starts (optional)",
+        "endsAt": "Ends (optional)"
+      }
     }
+  },
+  "payment": {
+    "sandbox": {
+      "gateway": "{{name}} payment gateway",
+      "notice": "Test environment — no real money is charged",
+      "merchant": "Merchant",
+      "reference": "Transaction ref",
+      "amount": "Amount",
+      "pay": "Pay successfully",
+      "cancel": "Cancel transaction"
+    },
+    "result": {
+      "invalidTitle": "We couldn't verify the payment result",
+      "invalidHint": "Please check the order status in My Purchases.",
+      "viewOrders": "View my purchases",
+      "paidTitle": "Payment successful!",
+      "paidHint": "{{count}} orders have been paid. The shops will confirm them soon.",
+      "amount": "Amount paid:",
+      "cancelledTitle": "Order cancelled",
+      "cancelledHint": "The payment deadline passed or the order was cancelled. Stock has been restored.",
+      "codTitle": "Cash on delivery order",
+      "checking": "Confirming your payment...",
+      "failedTitle": "Payment was not completed",
+      "pendingTitle": "We haven't received the payment result yet",
+      "retryHint": "You can pay again before the order expires.",
+      "deadline": "Time left:",
+      "retry": "Pay again {{amount}}",
+      "continue": "Continue shopping"
+    }
+  },
+  "shipment": {
+    "title": "Shipping information",
+    "carrier": "Carrier",
+    "trackingCode": "Tracking number",
+    "eta": "Estimated delivery",
+    "provider": {
+      "GHN": "Giao Hang Nhanh",
+      "INTERNAL": "ShopVie Express"
+    },
+    "status": {
+      "CREATED": "Waiting for pickup",
+      "PICKED_UP": "Picked up",
+      "IN_TRANSIT": "In transit",
+      "DELIVERED": "Delivered",
+      "FAILED": "Delivery attempt failed",
+      "RETURNED": "Returning to seller",
+      "CANCELLED": "Shipment cancelled"
+    }
+  },
+  "voucher": {
+    "percent": "{{value}}% off",
+    "percentMax": "{{value}}% off, up to {{max}}",
+    "freeship": "Free shipping up to {{amount}}",
+    "fixed": "{{amount}} off"
+  },
+  "flashSale": {
+    "endsIn": "Ends in",
+    "startsIn": "Starts in",
+    "soldOut": "Sold out",
+    "almostGone": "Selling fast",
+    "sold": "{{count}} sold",
+    "processing": "Processing...",
+    "upcoming": "Coming soon",
+    "buyNow": "Buy now",
+    "needAddress": "Add a default shipping address to buy flash sale items",
+    "reserved": "Slot reserved, creating your order...",
+    "success": "Flash sale order placed!",
+    "slow": "Your order is being processed, check My Purchases in a few minutes",
+    "failed": {
+      "default": "Could not create the flash sale order, your slot was released",
+      "OUT_OF_STOCK": "The item is out of stock, your slot was released",
+      "PRODUCT_UNAVAILABLE": "The item is no longer sold, your slot was released",
+      "ADDRESS_NOT_FOUND": "Shipping address not found",
+      "FLASH_SALE_SOLD_OUT": "This flash sale item is sold out",
+      "PUBLISH_FAILED": "The system is busy, please try again"
+    }
+  },
+  "reviews": {
+    "title": "Product ratings",
+    "outOf5": "out of 5",
+    "filter": "Filter ratings",
+    "all": "All",
+    "stars": "{{count}} star",
+    "withMedia": "With media",
+    "loadError": "Could not load ratings",
+    "empty": "No ratings yet",
+    "variant": "Variation: {{name}}",
+    "sellerReply": "Seller’s response",
+    "loading": "Loading ratings...",
+    "rateOrder": "Rate products",
+    "write": "Rate",
+    "rating": "Product quality",
+    "ratingText": {
+      "1": "Terrible",
+      "2": "Poor",
+      "3": "Fair",
+      "4": "Good",
+      "5": "Amazing"
+    },
+    "contentPlaceholder": "Share your thoughts about the product (optional)",
+    "content": "Review",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "thanks": "Thanks for your rating!"
+  },
+  "voucherAdmin": {
+    "platformTitle": "Platform vouchers",
+    "shopTitle": "Shop vouchers",
+    "create": "Create voucher",
+    "empty": "No vouchers yet",
+    "col": {
+      "voucher": "Voucher",
+      "value": "Discount",
+      "usage": "Used",
+      "period": "Period",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "minOrder": "Min. spend {{amount}}",
+    "perUser": "{{count}} per user",
+    "status": {
+      "DISABLED": "Disabled",
+      "UPCOMING": "Upcoming",
+      "RUNNING": "Running",
+      "ENDED": "Ended"
+    },
+    "disable": "Disable",
+    "codeHint": "4-20 letters or digits, unique across the platform",
+    "field": {
+      "code": "Code",
+      "name": "Campaign name",
+      "type": "Type",
+      "percent": "Percent off (%)",
+      "amount": "Amount off (₫)",
+      "minOrder": "Min. spend (₫)",
+      "maxDiscount": "Max. discount (₫)",
+      "usageLimit": "Total uses",
+      "perUserLimit": "Uses per user",
+      "startAt": "Starts",
+      "endAt": "Ends"
+    },
+    "type": {
+      "FIXED": "Amount off",
+      "PERCENT": "Percent off",
+      "FREESHIP": "Free shipping"
+    },
+    "cancel": "Cancel",
+    "save": "Save",
+    "created": "Voucher created",
+    "confirmDisable": "Disable voucher {{code}}? Buyers will no longer be able to use it."
+  },
+  "notifications": {
+    "bell": "Notifications",
+    "bellWithCount": "Notifications: {{count}} unread",
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications yet",
+    "unread": "Unread",
+    "new": "New notification",
+    "reason": "Reason: {{reason}}",
+    "type": {
+      "ORDER_STATUS": "Order {{order}}: {{status}}",
+      "ORDER_CANCELLED_BY_BUYER": "The buyer cancelled order {{order}}",
+      "NEW_ORDER": "You have a new order {{order}} ({{total}})",
+      "PAYMENT_SUCCEEDED": "Payment received for order {{order}} ({{total}})",
+      "SHOP_APPROVED": "Your shop \"{{shopName}}\" has been approved — start selling!",
+      "SHOP_REJECTED": "Your shop \"{{shopName}}\" was not approved",
+      "SHOP_BANNED": "Your shop \"{{shopName}}\" has been banned",
+      "SHOP_UNBANNED": "Your shop \"{{shopName}}\" has been unbanned",
+      "PRODUCT_BANNED": "Your product \"{{productName}}\" has been banned",
+      "PRODUCT_UNBANNED": "Your product \"{{productName}}\" has been unbanned"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "open": "Open chat",
+    "openWithCount": "Open chat: {{count}} unread messages",
+    "close": "Close chat",
+    "conversations": "Conversations",
+    "empty": "No conversations yet. Click \"Chat now\" on a product page to ask the shop.",
+    "customer": "Customer",
+    "noMessages": "No messages yet",
+    "back": "Back to conversations",
+    "older": "Load older messages",
+    "seen": "Seen",
+    "startHint": "Say hello to start the conversation",
+    "placeholder": "Type a message...",
+    "message": "Message",
+    "send": "Send",
+    "pick": "Select a conversation"
+  },
+  "seo": {
+    "home": "ShopVie marketplace: shop genuine products online at great prices, daily Flash Sales and free-shipping vouchers.",
+    "category": "Shop {{name}} at great prices on ShopVie. New arrivals, fast nationwide delivery, easy returns."
   }
 }

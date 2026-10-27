@@ -16,6 +16,8 @@ import {
 import { fail, MockResult, ok } from './mock-commerce';
 import { MockProduct, MockUser, slugify } from './mock-data';
 import { MockDb, MockOrder, MockShop } from './mock-db';
+import { notify, notifyOrderStatus } from './mock-social';
+import { createShipment, recordShipment, setStatus } from './mock-payment';
 
 /**
  * Seller Center và duyệt shop của backend giả — cùng quy tắc với backend thật (P3): mở shop → PENDING, chỉ shop
@@ -53,7 +55,7 @@ export function registerShop(d: MockDb, user: MockUser, body: Record<string, unk
   const created = now();
   const shop: MockShop = {
     id: d.nextId(d.shops), ownerId: user.id, ...shopInfo(body), slug: uniqueShopSlug(d, str(body['name']), -1),
-    ratingAvg: 0, status: 'PENDING', rejectReason: null, createdAt: created, updatedAt: created,
+    ratingAvg: 0, status: 'PENDING', rejectReason: null, pickupAddress: null, createdAt: created, updatedAt: created,
   };
   d.shops.push(shop);
   user.role = 'SELLER';
@@ -79,6 +81,21 @@ export function updateShop(d: MockDb, user: MockUser, body: Record<string, unkno
   return ok(toMyShop(shop));
 }
 
+/** Địa chỉ lấy hàng của shop (dùng tính phí ship / tạo vận đơn). */
+export function updatePickupAddress(d: MockDb, user: MockUser, body: Record<string, unknown>): MockResult {
+  const shop = d.shops.find((s) => s.ownerId === user.id);
+  if (!shop) return fail(404, 'SHOP_NOT_FOUND');
+  const fields = ['name', 'phone', 'provinceCode', 'wardCode', 'detail'].filter((f) => !str(body[f]));
+  if (fields.length) return invalid(fields[0]);
+  shop.pickupAddress = {
+    name: str(body['name']), phone: str(body['phone']), provinceCode: str(body['provinceCode']),
+    wardCode: str(body['wardCode']), detail: str(body['detail']),
+  };
+  shop.updatedAt = now();
+  d.save();
+  return ok(toMyShop(shop));
+}
+
 export function adminListShops(d: MockDb, params: URLSearchParams): MockResult {
   const status = params.get('status') as ShopStatus | null;
   const list = d.shops
@@ -94,6 +111,7 @@ export function adminReviewShop(d: MockDb, shopId: number, approve: boolean, rea
   if (shop.status !== 'PENDING') return fail(409, 'INVALID_SHOP_STATUS');
   Object.assign(shop, approve ? { status: 'ACTIVE', rejectReason: null } : { status: 'REJECTED', rejectReason: str(reason) });
   shop.updatedAt = now();
+  notify(d, shop.ownerId, approve ? 'SHOP_APPROVED' : 'SHOP_REJECTED', { shopName: shop.name, reason: shop.rejectReason }, '/seller-center/shop');
   d.save();
   return ok(toAdminShop(d, shop));
 }
@@ -109,7 +127,7 @@ export function listProducts(d: MockDb, user: MockUser, params: URLSearchParams)
     .filter((p) => p.shop.id === shop.id && (!status || statusOf(p) === status) && (!q || p.name.toLowerCase().includes(q)))
     .sort((a, b) => (b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt) || b.id - a.id)
     .map((p) => ({
-      id: p.id, name: p.name, slug: p.slug, thumbnailUrl: p.images[0] ?? null, status: statusOf(p), minPrice: p.minPrice,
+      id: p.id, name: p.name, slug: p.slug, thumbnailUrl: p.images[0] ?? null, status: statusOf(p), banReason: p.banReason ?? null, minPrice: p.minPrice,
       maxPrice: p.maxPrice, totalStock: p.variants.reduce((s, v) => s + v.stock, 0), variantCount: p.variants.length,
       soldCount: p.soldCount, ratingAvg: p.ratingAvg, createdAt: p.createdAt, updatedAt: p.updatedAt ?? p.createdAt,
     }));
@@ -262,13 +280,13 @@ export function performAction(d: MockDb, user: MockUser, code: string, action: S
   if (action === 'CANCEL' && !note) return invalid('reason');
   const target = ACTION_TARGET[action];
   if (!NEXT[order.status].includes(target)) return fail(409, 'INVALID_ORDER_STATUS_TRANSITION');
-  const timestamp = now();
-  order.history.push({ fromStatus: order.status, toStatus: target, note, createdAt: timestamp });
-  order.status = target;
-  order.cancellable = NEXT[target].includes('CANCELLED');
-  order.updatedAt = timestamp;
-  if (target === 'DELIVERED' && order.paymentMethod === 'COD') order.paymentStatus = 'PAID';
+  if (action === 'CONFIRM' && order.awaitingPayment) return fail(409, 'ORDER_AWAITING_PAYMENT');
+  setStatus(order, target, note);
+  if (action === 'CONFIRM') createShipment(d, order);
+  if (action === 'SHIP') recordShipment(order, 'IN_TRANSIT', note);
+  if (action === 'DELIVER') recordShipment(order, 'DELIVERED', note);
   if (target === 'CANCELLED') order.items.forEach((i) => i.variantId && d.adjustStock(i.variantId, i.quantity));
+  notifyOrderStatus(d, order, 'seller', note);
   d.save();
   return ok(toSellerOrderDetail(order));
 }
@@ -341,7 +359,8 @@ function statusOf(p: MockProduct): ProductStatus {
 
 function toSellerDetail(p: MockProduct): SellerProductDetail {
   return {
-    id: p.id, name: p.name, slug: p.slug, status: statusOf(p), categoryId: p.categoryId, categoryPath: p.breadcrumb,
+    id: p.id, name: p.name, slug: p.slug, status: statusOf(p), banReason: p.banReason ?? null, categoryId: p.categoryId,
+    categoryPath: p.breadcrumb,
     description: p.description, attributes: p.attributes as Record<string, string>, images: p.images,
     variantOptions: p.variantOptions, variants: p.variants, minPrice: p.minPrice, maxPrice: p.maxPrice,
     totalStock: p.variants.reduce((s, v) => s + v.stock, 0), soldCount: p.soldCount, ratingAvg: p.ratingAvg,
@@ -355,21 +374,23 @@ function shopOrders(d: MockDb, shopId: number): MockOrder[] {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id - a.id);
 }
 
-function actionsOf(status: OrderStatus): SellerAction[] {
-  return (Object.keys(ACTION_TARGET) as SellerAction[]).filter((a) => NEXT[status].includes(ACTION_TARGET[a]));
+function actionsOf(status: OrderStatus, awaitingPayment = false): SellerAction[] {
+  return (Object.keys(ACTION_TARGET) as SellerAction[])
+    .filter((a) => NEXT[status].includes(ACTION_TARGET[a]))
+    .filter((a) => !(awaitingPayment && a === 'CONFIRM'));
 }
 
 function toSellerSummary(o: MockOrder): SellerOrderSummary {
   return {
     code: o.code, status: o.status, items: o.items, subtotal: o.subtotal, shippingFee: o.shippingFee, discount: o.discount,
-    total: o.total, paymentMethod: o.paymentMethod, paymentStatus: o.paymentStatus, receiverName: o.shippingAddress.receiverName,
-    note: o.note, actions: actionsOf(o.status), createdAt: o.createdAt,
+    total: o.total, paymentMethod: o.paymentMethod, paymentStatus: o.paymentStatus, awaitingPayment: o.awaitingPayment,
+    receiverName: o.shippingAddress.receiverName, note: o.note, actions: actionsOf(o.status, o.awaitingPayment), createdAt: o.createdAt,
   };
 }
 
 function toSellerOrderDetail(o: MockOrder): SellerOrderDetail {
   const { receiverName: _r, ...summary } = toSellerSummary(o);
-  return { ...summary, shippingAddress: o.shippingAddress, history: o.history, updatedAt: o.updatedAt };
+  return { ...summary, shippingAddress: o.shippingAddress, history: o.history, shipment: o.shipment, updatedAt: o.updatedAt };
 }
 
 function countByStatus(orders: MockOrder[]): Record<OrderStatus, number> {
@@ -382,10 +403,10 @@ function toMyShop({ ownerId: _o, ...s }: MockShop): MyShop {
   return s;
 }
 
-function toAdminShop(d: MockDb, s: MockShop): AdminShop {
+export function toAdminShop(d: MockDb, s: MockShop): AdminShop {
   const owner = d.users.find((u) => u.id === s.ownerId);
   const { ownerId: _o, ratingAvg: _r, ...rest } = s;
-  return { ...rest, owner: owner ? { id: owner.id, email: owner.email, fullName: owner.fullName } : null };
+  return { ...rest, banReason: s.banReason ?? null, owner: owner ? { id: owner.id, email: owner.email, fullName: owner.fullName } : null };
 }
 
 function validateShopInfo(body: Record<string, unknown>): MockResult | null {

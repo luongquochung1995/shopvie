@@ -50,6 +50,46 @@ Khi DB trống, backend tự seed 20 danh mục, 3 shop và 100 sản phẩm có
 
 Kênh người bán: `/seller-center` (người mua bấm "Mở shop bán hàng" để đăng ký; shop chờ admin duyệt ở `/admin/shops`).
 
+### Thanh toán online & vận chuyển (Phase 4)
+
+- **Dev mặc định:** VNPay/MoMo chạy qua **cổng giả lập** của ShopVie (`/payment/sandbox`): chọn "Thanh toán thành công" hoặc "Hủy giao dịch",
+  backend ký callback bằng key dev và xử lý đúng luồng return URL + kiểm tra chữ ký như cổng thật. Không trừ tiền thật.
+- **Sandbox thật:** điền `VNPAY_TMN_CODE`/`VNPAY_HASH_SECRET` và/hoặc `MOMO_*` trong `.env`, đặt `PAYMENT_SANDBOX_GATEWAY=false`.
+  IPN cần `PAYMENT_PUBLIC_BASE_URL` truy cập được từ Internet (vd. ngrok); khi chạy local, return URL cũng xác nhận giao dịch.
+- Đơn thanh toán online chưa trả tiền sau 15 phút bị hủy và hoàn kho (job chạy mỗi phút).
+- **Vận chuyển:** chưa cấu hình GHN thì dùng bảng phí nội bộ theo vùng (cùng tỉnh / cùng miền / khác miền) và mã vận đơn `SVX…`.
+  Có `GHN_TOKEN` + `GHN_SHOP_ID` thì gọi GHN (địa giới 2 cấp — chưa kiểm chứng trên sandbox). Webhook GHN:
+  `POST /api/v1/shipping/ghn/webhook?token=<GHN_WEBHOOK_TOKEN>`.
+- Seller khai báo **địa chỉ lấy hàng** ở Kênh người bán → Hồ sơ shop (dùng tính phí ship và tạo vận đơn).
+
+### Tìm kiếm, voucher, flash sale (Phase 5)
+
+Cần thêm **Elasticsearch 8** (`:9200`) và **Kafka** (`:9092`); flash sale cần **Redis có Lua** (`:6379`). Với Docker: `docker compose up -d`.
+Không có Docker thì chạy bản portable (cách máy dev đang dùng):
+
+- Elasticsearch 8.18.8 (zip): thêm vào `config/elasticsearch.yml`: `discovery.type: single-node`, `network.host: 127.0.0.1`,
+  `xpack.security.enabled: false`, `xpack.ml.enabled: false`; chạy `bin\elasticsearch.bat` (`ES_JAVA_OPTS=-Xms1g -Xmx1g`).
+- Kafka 3.9.2 (KRaft): format storage một lần bằng `kafka.tools.StorageTool`, chạy
+  `java -cp "libs/*" kafka.Kafka config/kraft/server.properties` (file `.bat` lỗi "input line too long" trên Windows).
+- Redis: Microsoft Garnet (cần .NET 10 runtime) — `GarnetServer.exe --bind 127.0.0.1 --port 6379 --lua --lua-transaction-mode --auth Password --password <REDIS_PASSWORD>`.
+
+Ghi chú:
+- Chỉ mục `products` tự tạo khi khởi động nếu chưa có; nạp lại toàn bộ: `POST /api/v1/admin/search/reindex` (admin). Sản phẩm thay đổi
+  được đẩy qua Kafka (`shopvi.product-changed`) và cập nhật chỉ mục sau vài trăm ms. Thiếu ES → `/search` trả `503 SEARCH_UNAVAILABLE`.
+- Flash sale: tạo phiên ở Quản trị → Flash sale (nhập id phân loại/SKU). Mua → đơn COD được tạo bất đồng bộ qua Kafka (`shopvi.flash-sale-orders`).
+  Load test: `k6 run -e BASE_URL=http://localhost:8080 -e ITEM_ID=<id> -e QUOTA=<quota> loadtest/flash-sale.js` (cần `tokens.json`, xem đầu file).
+- Mock API có sẵn voucher `SHOPVIE20K`, `FREESHIP30`, `SHOP10` và một phiên flash sale đang chạy.
+
+### Thông báo realtime, chat, quản trị (Phase 6)
+
+- WebSocket: STOMP over SockJS tại `/ws` (FE dev kết nối `http://localhost:8080/ws`). Client gửi `Authorization: Bearer <access token>`
+  trong khung CONNECT và chỉ đăng ký được `/user/queue/notifications`, `/user/queue/chat`; gửi tin chat qua REST `/api/v1/chat/**`.
+  Origin của FE phải nằm trong `CORS_ALLOWED_ORIGINS` (mặc định `http://localhost:4200`).
+- Broker STOMP trong bộ nhớ — chỉ đúng khi chạy **một** instance backend.
+- Quản trị: đăng nhập `admin@shopvi.local` → menu tài khoản → **Quản trị** (tổng quan, shop, sản phẩm, tài khoản, voucher sàn, flash sale, banner).
+- Chế độ mock (`npm run start:mock`): thông báo/chat realtime chạy giữa các tab cùng trình duyệt — mở một tab người mua và một tab seller để thử.
+- `.claude/launch.json` có sẵn cấu hình `backend-dev` (jar + `.env`) và `frontend-dev` (cổng 4201, cần thêm vào `CORS_ALLOWED_ORIGINS`).
+
 ### Chạy khi chưa có Redis/MinIO
 
 Cache tự bỏ qua lỗi Redis, nhưng nên tắt hẳn để tránh chờ timeout:
@@ -80,6 +120,9 @@ Không có Docker thì integration test tự bỏ qua. Có thể chạy chúng t
   -Dspring.datasource.username=shopvi -Dspring.datasource.password=... \
   -Dspring.cache.type=simple -Dmanagement.health.redis.enabled=false
 ```
+
+Từ Phase 5, IT cần thêm Redis (có Lua), Kafka và Elasticsearch đang chạy: bỏ hai cờ cuối, thêm `-Dspring.data.redis.password=...`
+(chỉ mục test tên `it-products`, không đụng chỉ mục dev). Không chạy IT cùng lúc với backend dev trên cùng Kafka (chung tên topic).
 
 ## Ghi chú
 

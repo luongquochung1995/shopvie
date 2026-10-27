@@ -1,5 +1,6 @@
 package com.shopvi.user;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +27,9 @@ public interface UserApi {
      * {@code FORBIDDEN} nếu là ADMIN. Access token cũ vẫn mang role cũ tới khi được làm mới.
      */
     UserAccount promoteToSeller(Long userId);
+
+    /** Thống kê tài khoản; {@code newSince}: số tài khoản tạo từ {@code since}. */
+    UserStats stats(Instant since);
 
     /** Địa chỉ thuộc user (không thuộc → empty). */
     Optional<AddressSnapshot> findAddress(Long userId, Long addressId);

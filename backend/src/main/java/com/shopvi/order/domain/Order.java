@@ -75,6 +75,10 @@ public class Order extends BaseEntity {
     @Column(name = "checkout_id", nullable = false, updatable = false)
     private UUID checkoutId;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(nullable = false, updatable = false)
+    private List<OrderVoucher> vouchers = new ArrayList<>();
+
     @BatchSize(size = 50)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
@@ -88,6 +92,13 @@ public class Order extends BaseEntity {
     /** Tạo đơn PENDING (chưa thanh toán) và ghi lịch sử khởi tạo. */
     public static Order place(String code, UUID checkoutId, Long userId, Long shopId, PaymentMethod paymentMethod,
                               ShippingAddress address, String note, long shippingFee, List<OrderItem.Snapshot> lines) {
+        return place(code, checkoutId, userId, shopId, paymentMethod, address, note, shippingFee, List.of(), lines);
+    }
+
+    /** Như trên, kèm voucher đã áp (tổng giảm không vượt quá tiền hàng + phí ship). */
+    public static Order place(String code, UUID checkoutId, Long userId, Long shopId, PaymentMethod paymentMethod,
+                              ShippingAddress address, String note, long shippingFee, List<OrderVoucher> vouchers,
+                              List<OrderItem.Snapshot> lines) {
         Order order = new Order();
         order.code = code;
         order.checkoutId = checkoutId;
@@ -100,7 +111,9 @@ public class Order extends BaseEntity {
         lines.forEach(l -> order.items.add(OrderItem.of(order, l)));
         order.subtotal = order.items.stream().mapToLong(OrderItem::lineTotal).sum();
         order.shippingFee = shippingFee;
-        order.discount = 0;
+        order.vouchers = new ArrayList<>(vouchers);
+        order.discount = Math.min(vouchers.stream().mapToLong(OrderVoucher::amount).sum(),
+                order.subtotal + order.shippingFee);
         order.total = order.subtotal + order.shippingFee - order.discount;
         order.status = OrderStatus.PENDING;
         order.history.add(OrderStatusHistory.of(order, null, OrderStatus.PENDING, userId, null));

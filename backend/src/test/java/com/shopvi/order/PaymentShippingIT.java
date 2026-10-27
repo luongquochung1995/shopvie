@@ -198,6 +198,9 @@ class PaymentShippingIT {
 
     @Test
     void unpaidOrderIsCancelledAfterDeadlineAndStockRestored() {
+        // Đơn quá hạn còn sót từ các lần chạy trước (DB test dùng lại) có thể cùng SKU — hủy trước rồi mới đo kho
+        paymentHandler.expireOverdue();
+        jdbc.update("UPDATE product_variants SET stock = 50 WHERE id = ?", variant);
         String buyer = api.registerRandom();
         long addressId = address(buyer, "79", "26740");
         api.post("/cart/items", buyer, Map.of("variantId", variant, "quantity", 3));

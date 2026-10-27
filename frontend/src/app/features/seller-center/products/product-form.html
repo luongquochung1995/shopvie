@@ -29,6 +29,11 @@
           <span class="ml-2 align-middle text-xs font-normal text-gray-500">{{ 'productStatus.' + p.status | transloco }}</span>
         }
       </h1>
+      @if (loaded()?.banReason; as reason) {
+        <p class="mb-4 rounded-sm border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">
+          {{ 'seller.products.bannedNotice' | transloco: { reason } }}
+        </p>
+      }
 
       <div class="flex flex-col gap-4">
         <!-- Ảnh -->

@@ -17,7 +17,7 @@ import { ShopStatusTag } from '../seller-center/shop-status-tag';
 
 const PAGE_SIZE = 20;
 
-/** Admin duyệt shop mới đăng ký: danh sách theo trạng thái (mặc định Chờ duyệt), duyệt hoặc từ chối kèm lý do. */
+/** Admin duyệt shop mới đăng ký (duyệt / từ chối kèm lý do) và khóa / mở khóa shop đang hoạt động. */
 @Component({
   selector: 'app-shop-approval',
   imports: [RouterLink, FormsModule, TranslocoDirective, TranslocoPipe, ButtonDirective, Dialog, Textarea, DateTimePipe, EmptyState, ShopStatusTag],
@@ -55,6 +55,9 @@ const PAGE_SIZE = 20;
               @if (s.rejectReason) {
                 <p class="mt-1 text-red-700">{{ t('reason', { reason: s.rejectReason }) }}</p>
               }
+              @if (s.banReason) {
+                <p class="mt-1 text-red-700">{{ t('banReason', { reason: s.banReason }) }}</p>
+              }
             </div>
             @if (s.status === 'PENDING') {
               <div class="flex shrink-0 gap-2">
@@ -62,6 +65,11 @@ const PAGE_SIZE = 20;
                         (click)="openReject(s)">{{ t('reject') }}</button>
                 <button pButton type="button" size="small" [disabled]="busyId() === s.id" (click)="approve(s)">{{ t('approve') }}</button>
               </div>
+            } @else if (s.status === 'ACTIVE') {
+              <button pButton type="button" size="small" [outlined]="true" severity="danger" class="shrink-0" [disabled]="busyId() === s.id"
+                      (click)="openBan(s)">{{ t('ban') }}</button>
+            } @else if (s.status === 'BANNED') {
+              <button pButton type="button" size="small" class="shrink-0" [disabled]="busyId() === s.id" (click)="unban(s)">{{ t('unban') }}</button>
             }
           </li>
         }
@@ -74,14 +82,14 @@ const PAGE_SIZE = 20;
         </div>
       }
 
-      <p-dialog [header]="t('rejectTitle', { name: rejecting()?.name ?? '' })" [visible]="rejecting() !== null"
+      <p-dialog [header]="t(mode() === 'ban' ? 'banTitle' : 'rejectTitle', { name: rejecting()?.name ?? '' })" [visible]="rejecting() !== null"
                 (visibleChange)="!$event && rejecting.set(null)" [modal]="true" [draggable]="false"
                 [style]="{ width: '28rem' }" [breakpoints]="{ '640px': '95vw' }">
         <textarea pTextarea class="w-full" rows="3" maxlength="500" [placeholder]="t('reasonPlaceholder')" [attr.aria-label]="t('reasonPlaceholder')"
                   [ngModel]="reason()" (ngModelChange)="reason.set($event)"></textarea>
         <ng-template #footer>
           <button pButton type="button" [text]="true" severity="secondary" (click)="rejecting.set(null)">{{ 'common.back' | transloco }}</button>
-          <button pButton type="button" severity="danger" [disabled]="!reason().trim() || busyId() !== null" (click)="reject()">{{ t('reject') }}</button>
+          <button pButton type="button" severity="danger" [disabled]="!reason().trim() || busyId() !== null" (click)="reject()">{{ t(mode() === 'ban' ? 'ban' : 'reject') }}</button>
         </ng-template>
       </p-dialog>
     </div>
@@ -109,6 +117,8 @@ export default class ShopApproval {
   protected readonly busyId = signal<number | null>(null);
   protected readonly rejecting = signal<AdminShop | null>(null);
   protected readonly reason = signal('');
+  /** Hộp thoại lý do dùng chung cho từ chối (PENDING) và khóa (ACTIVE). */
+  protected readonly mode = signal<'reject' | 'ban'>('reject');
   private request?: Subscription;
 
   constructor() {
@@ -124,15 +134,32 @@ export default class ShopApproval {
   }
 
   protected openReject(s: AdminShop): void {
+    this.mode.set('reject');
+    this.reason.set('');
+    this.rejecting.set(s);
+  }
+
+  protected openBan(s: AdminShop): void {
+    this.mode.set('ban');
     this.reason.set('');
     this.rejecting.set(s);
   }
 
   protected reject(): void {
     const s = this.rejecting();
-    if (s) {
-      this.run(s, this.api.rejectShop(s.id, this.reason().trim()), 'admin.shops.rejected');
+    if (!s) {
+      return;
     }
+    const reason = this.reason().trim();
+    if (this.mode() === 'ban') {
+      this.run(s, this.api.banShop(s.id, reason), 'admin.shops.banned');
+    } else {
+      this.run(s, this.api.rejectShop(s.id, reason), 'admin.shops.rejected');
+    }
+  }
+
+  protected unban(s: AdminShop): void {
+    this.run(s, this.api.unbanShop(s.id), 'admin.shops.unbanned');
   }
 
   protected fetch(page: number): void {

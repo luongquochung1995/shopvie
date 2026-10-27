@@ -9,10 +9,12 @@ import {
   ApiResponse,
   AuthResponse,
   Cart,
+  CheckoutPayment,
   CheckoutPreview,
   MyShop,
   OrderDetail,
   Page,
+  PaymentLink,
   PlaceOrderResult,
   ProductCard,
   ProductDetail,
@@ -158,6 +160,56 @@ describe('mockBackendInterceptor', () => {
     expect((await get<Page<unknown>>('/orders?status=PENDING')).totalItems).toBe(1);
   });
 
+  it('online payment: retry after failure, pay, seller ships with tracking; unpaid orders expire', async () => {
+    await login();
+    const hanoi = await post<Address>('/me/addresses', {
+      receiverName: 'B', phone: '0901234567', provinceCode: '01', wardCode: '00004', detail: '1 Kim Mã', isDefault: true,
+    });
+    // Sản phẩm của shop 1 (kho TP.HCM) giao ra Hà Nội → khác miền 38.000đ
+    const product = mockDb().catalog.products.find((p) => p.shop.id === 1 && p.variants.some((v) => v.stock >= 5))!;
+    const variant = product.variants.find((v) => v.stock >= 5)!;
+    await post<Cart>('/cart/items', { variantId: variant.id, quantity: 1 });
+    const preview = await post<CheckoutPreview>('/checkout/preview', {});
+    expect(preview.groups[0].shippingFee).toBe(38_000);
+    expect(preview.paymentMethods).toEqual(['COD', 'VNPAY', 'MOMO']);
+
+    const placed = await post<PlaceOrderResult>('/checkout', { addressId: hanoi.id, paymentMethod: 'VNPAY', notes: {} });
+    expect(placed.paymentUrl).toMatch(/^\/payment\/sandbox\?ref=\w+&method=VNPAY&amount=\d+$/);
+    const ref = new URLSearchParams(placed.paymentUrl!.split('?')[1]).get('ref')!;
+    const status = () => get<CheckoutPayment>(`/checkout/${placed.checkoutId}/payment`);
+    expect((await status()).status).toBe('PENDING');
+
+    const failed = await post<{ redirectUrl: string }>(`/payments/sandbox/${ref}`, { success: false });
+    expect(failed.redirectUrl).toBe(`/payment/result?status=failed&checkoutId=${placed.checkoutId}`);
+    expect((await status()).status).toBe('FAILED');
+    const retry = await post<PaymentLink>(`/checkout/${placed.checkoutId}/payment`, null);
+    expect(retry.expiresAt).toBe(placed.paymentExpiresAt);
+    await post(`/payments/sandbox/${new URLSearchParams(retry.paymentUrl.split('?')[1]).get('ref')}`, { success: true });
+    expect((await status()).status).toBe('PAID');
+
+    // Seller xác nhận → vận đơn; giao → hành trình
+    const code = placed.orders[0].code;
+    await login('seller1@shopvi.local');
+    const confirmed = await post<SellerOrderDetail>(`/seller/orders/${code}/confirm`, {});
+    expect(confirmed.shipment?.trackingCode).toMatch(/^SVX\d+$/);
+    expect(confirmed.shipment?.fee).toBe(38_000);
+    await post(`/seller/orders/${code}/ship`, {});
+    const delivered = await post<SellerOrderDetail>(`/seller/orders/${code}/deliver`, {});
+    expect(delivered.shipment?.events.map((e) => e.status)).toEqual(['DELIVERED', 'IN_TRANSIT', 'CREATED']);
+
+    // Đơn online khác quá hạn thanh toán → tự hủy, hoàn kho
+    await login();
+    await post<Cart>('/cart/items', { variantId: variant.id, quantity: 2 });
+    const unpaid = await post<PlaceOrderResult>('/checkout', { addressId: hanoi.id, paymentMethod: 'MOMO', notes: {} });
+    const stockAfterOrder = mockDb().findVariant(variant.id)!.variant.stock;
+    mockDb().orders.filter((o) => o.checkoutId === unpaid.checkoutId).forEach((o) => (o.paymentExpiresAt = new Date(0).toISOString()));
+    const expired = await get<OrderDetail>(`/orders/${unpaid.orders[0].code}`);
+    expect(expired.status).toBe('CANCELLED');
+    expect(expired.history.at(-1)?.note).toBe('Quá hạn thanh toán');
+    expect(mockDb().findVariant(variant.id)!.variant.stock).toBe(stockAfterOrder + 2);
+    expect((await error(post(`/checkout/${unpaid.checkoutId}/payment`, null)))?.code).toBe('PAYMENT_NOT_REQUIRED');
+  });
+
   it('runs the seller center flow: open shop → approval → product with variants → fulfil order', async () => {
     const auth = TestBed.inject(AuthStore);
     const put = <T>(url: string, body: unknown) => firstValueFrom(http.put<ApiResponse<T>>(API + url, body)).then((r) => r.data);
@@ -224,8 +276,9 @@ function sampleOrder(): MockOrder {
   const at = new Date().toISOString();
   return {
     id: 1, userId: 2, code: 'x', checkoutId: 'c', status: 'PENDING', shop: null,
-    items: [{ variantId: null, productId: 1, productName: 'Áo', productSlug: 'ao-1', variantName: null, imageUrl: null, unitPrice: 100_000, quantity: 1, lineTotal: 100_000 }],
+    items: [{ id: 100, variantId: null, productId: 1, productName: 'Áo', productSlug: 'ao-1', variantName: null, imageUrl: null, unitPrice: 100_000, quantity: 1, lineTotal: 100_000 }],
     subtotal: 100_000, shippingFee: 30_000, discount: 0, total: 130_000, paymentMethod: 'COD', paymentStatus: 'UNPAID', cancellable: true,
+    awaitingPayment: false, paymentExpiresAt: null, shipment: null, vouchers: [],
     shippingAddress: { receiverName: 'A', phone: '0901234567', provinceCode: '79', districtCode: null, wardCode: '26740', detail: '1 Lê Lợi' },
     note: null, history: [{ fromStatus: null, toStatus: 'PENDING', note: null, createdAt: at }], createdAt: at, updatedAt: at,
   };

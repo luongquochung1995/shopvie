@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Shops", description = "Duyệt shop mới đăng ký (role ADMIN)")
+@Tag(name = "Admin - Shops", description = "Duyệt shop mới đăng ký, khóa/mở khóa shop (role ADMIN)")
 @RestController
 @RequestMapping("/api/v1/admin/shops")
 @RequiredArgsConstructor
@@ -54,6 +54,18 @@ class ShopAdminController {
     @PostMapping("/{id}/reject")
     ApiResponse<AdminShop> reject(@PathVariable Long id, @Valid @RequestBody RejectRequest req) {
         return ApiResponse.ok(shopAdminService.reject(id, req.reason()));
+    }
+
+    @Operation(summary = "Khóa shop vi phạm (ACTIVE → BANNED) kèm lý do; sản phẩm của shop ngừng hiển thị")
+    @PostMapping("/{id}/ban")
+    ApiResponse<AdminShop> ban(@PathVariable Long id, @Valid @RequestBody RejectRequest req) {
+        return ApiResponse.ok(shopAdminService.ban(id, req.reason()));
+    }
+
+    @Operation(summary = "Mở khóa shop (BANNED → ACTIVE)")
+    @PostMapping("/{id}/unban")
+    ApiResponse<AdminShop> unban(@PathVariable Long id) {
+        return ApiResponse.ok(shopAdminService.unban(id));
     }
 
     record RejectRequest(@NotBlank @Size(max = 500) String reason) {

@@ -17,6 +17,17 @@ import org.springframework.data.jpa.repository.QueryHints;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
+    /** [ngày (giờ VN), số đơn, GMV của đơn không hủy/trả] theo ngày, từ {@code since}. */
+    @Query(value = """
+            SELECT CAST(created_at AT TIME ZONE 'Asia/Ho_Chi_Minh' AS date) AS day, COUNT(*) AS orders,
+                   COALESCE(SUM(CASE WHEN status NOT IN ('CANCELLED', 'RETURNED') THEN total END), 0) AS gmv
+            FROM orders WHERE created_at >= :since
+            GROUP BY day ORDER BY day""", nativeQuery = true)
+    List<Object[]> dailyPlatformStats(Instant since);
+
+    @Query(value = "SELECT status, COUNT(*) FROM orders WHERE created_at >= :since GROUP BY status", nativeQuery = true)
+    List<Object[]> countByStatusSince(Instant since);
+
     Page<Order> findByUserId(Long userId, Pageable pageable);
 
     Page<Order> findByUserIdAndStatus(Long userId, OrderStatus status, Pageable pageable);

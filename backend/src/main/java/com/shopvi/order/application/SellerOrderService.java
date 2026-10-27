@@ -41,6 +41,7 @@ public class SellerOrderService {
     private final OrderRepository orderRepository;
     private final ShopApi shopApi;
     private final OrderStockReleaser stockReleaser;
+    private final OrderEvents orderEvents;
     private final ShippingApi shippingApi;
 
     public Page<SellerOrderSummary> list(Long sellerId, OrderStatus status, Pageable pageable) {
@@ -87,7 +88,7 @@ public class SellerOrderService {
         }
         Order order = orderRepository.findByCodeAndShopIdForUpdate(code, shopId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ORDER_NOT_FOUND));
-        order.transitionTo(action.target(), sellerId, trimmed);
+        orderEvents.transition(order, action.target(), sellerId, trimmed);
         switch (action) {
             case CONFIRM -> shippingApi.createShipment(shipmentRequest(order, shopId));
             case SHIP -> shippingApi.recordManualStatus(code, ShipmentStatus.IN_TRANSIT, trimmed);

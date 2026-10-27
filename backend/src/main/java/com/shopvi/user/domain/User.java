@@ -1,6 +1,8 @@
 package com.shopvi.user.domain;
 
 import com.shopvi.common.domain.BaseEntity;
+import com.shopvi.common.exception.BusinessException;
+import com.shopvi.common.exception.ErrorCode;
 import com.shopvi.user.UserAccount;
 import com.shopvi.user.UserRole;
 import com.shopvi.user.UserStatus;
@@ -42,6 +44,10 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private UserStatus status;
 
+    /** Lý do admin khóa (chỉ có khi LOCKED). */
+    @Column(name = "lock_reason")
+    private String lockReason;
+
     public static User newBuyer(String email, String phone, String passwordHash, String fullName) {
         User user = new User();
         user.email = email;
@@ -64,6 +70,26 @@ public class User extends BaseEntity {
         if (role == UserRole.BUYER) {
             role = UserRole.SELLER;
         }
+    }
+
+    /** Admin khóa tài khoản vi phạm: không đăng nhập / làm mới phiên được nữa. Không khóa tài khoản ADMIN. */
+    public void lock(String reason) {
+        if (role == UserRole.ADMIN) {
+            throw new BusinessException(ErrorCode.CANNOT_LOCK_ADMIN);
+        }
+        if (status == UserStatus.LOCKED) {
+            throw new BusinessException(ErrorCode.INVALID_USER_STATUS);
+        }
+        status = UserStatus.LOCKED;
+        lockReason = reason;
+    }
+
+    public void unlock() {
+        if (status != UserStatus.LOCKED) {
+            throw new BusinessException(ErrorCode.INVALID_USER_STATUS);
+        }
+        status = UserStatus.ACTIVE;
+        lockReason = null;
     }
 
     public UserAccount toAccount() {

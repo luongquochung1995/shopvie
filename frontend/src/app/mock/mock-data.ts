@@ -16,6 +16,8 @@ export interface MockUser {
   avatarUrl: string | null;
   role: UserRole;
   createdAt: string;
+  status?: 'ACTIVE' | 'LOCKED';
+  lockReason?: string | null;
 }
 
 export interface MockProduct extends ProductDetail {
@@ -23,6 +25,7 @@ export interface MockProduct extends ProductDetail {
   createdAt: string;
   /** Mặc định ACTIVE (sản phẩm sinh sẵn); sản phẩm của seller có thể HIDDEN. */
   status?: ProductStatus;
+  banReason?: string | null;
   updatedAt?: string;
 }
 

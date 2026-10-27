@@ -28,6 +28,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class SellerProductServiceTest {
@@ -43,7 +44,7 @@ class SellerProductServiceTest {
     private final CategoryQueryService categories = mock(CategoryQueryService.class);
     private final ShopApi shops = mock(ShopApi.class);
     private final SellerProductService service = new SellerProductService(products, variants, images, categories,
-            shops, Clock.systemUTC());
+            shops, Clock.systemUTC(), mock(ApplicationEventPublisher.class));
 
     @BeforeEach
     void setUp() {

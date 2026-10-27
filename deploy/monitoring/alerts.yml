@@ -1,0 +1,33 @@
+# Cảnh báo cơ bản theo DoD Phase 7 (p95 API đọc < 200ms) và sức khỏe dịch vụ.
+groups:
+  - name: shopvi-backend
+    rules:
+      - alert: BackendDown
+        expr: up{job="shopvi-backend"} == 0
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "Backend không phản hồi Prometheus trong 1 phút"
+
+      - alert: ApiP95LatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{uri!~"/actuator.*", method="GET"}[5m]))) > 0.2
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "p95 API đọc vượt 200ms trong 5 phút"
+
+      - alert: ApiErrorRateHigh
+        expr: |
+          sum(rate(http_server_requests_seconds_count{status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count[5m])) > 0.01
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "Hơn 1% request lỗi 5xx trong 5 phút"
+
+      - alert: DbPoolSaturated
+        expr: hikaricp_connections_pending > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Có request chờ kết nối DB hơn 2 phút (pool cạn)"

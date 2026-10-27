@@ -51,6 +51,10 @@ public class Shop extends BaseEntity {
     @Column(name = "reject_reason")
     private String rejectReason;
 
+    /** Lý do admin khóa shop (chỉ có khi BANNED). */
+    @Column(name = "ban_reason")
+    private String banReason;
+
     // Địa chỉ lấy hàng (nơi đơn vị vận chuyển đến lấy hàng)
     @Column(name = "pickup_name")
     private String pickupName;
@@ -104,6 +108,19 @@ public class Shop extends BaseEntity {
         requireStatus(ShopStatus.PENDING);
         status = ShopStatus.REJECTED;
         rejectReason = reason;
+    }
+
+    /** Khóa shop đang hoạt động: sản phẩm ngừng hiển thị, seller không xử lý được đơn mới. */
+    public void ban(String reason) {
+        requireStatus(ShopStatus.ACTIVE);
+        status = ShopStatus.BANNED;
+        banReason = reason;
+    }
+
+    public void unban() {
+        requireStatus(ShopStatus.BANNED);
+        status = ShopStatus.ACTIVE;
+        banReason = null;
     }
 
     /** Shop chưa từng hiển thị công khai thì đổi slug theo tên mới được (không làm hỏng link đã chia sẻ). */

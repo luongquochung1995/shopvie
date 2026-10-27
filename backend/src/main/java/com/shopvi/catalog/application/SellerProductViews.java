@@ -36,12 +36,13 @@ public final class SellerProductViews {
 
     /** Dòng trong danh sách sản phẩm của seller. */
     public record SellerProductRow(Long id, String name, String slug, String thumbnailUrl, ProductStatus status,
-                                   long minPrice, long maxPrice, int totalStock, int variantCount, int soldCount,
+                                   String banReason, long minPrice, long maxPrice, int totalStock, int variantCount, int soldCount,
                                    BigDecimal ratingAvg, Instant createdAt, Instant updatedAt) {
     }
 
     /** Đầy đủ dữ liệu để mở form sửa sản phẩm. */
-    public record SellerProductDetail(Long id, String name, String slug, ProductStatus status, Long categoryId,
+    public record SellerProductDetail(Long id, String name, String slug, ProductStatus status, String banReason,
+                                      Long categoryId,
                                       List<CategoryRef> categoryPath, String description,
                                       Map<String, Object> attributes, List<String> images,
                                       List<VariantOption> variantOptions, List<VariantView> variants,

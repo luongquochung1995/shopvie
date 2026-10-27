@@ -4,9 +4,62 @@
     {
       "name": "frontend-mock",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--prefix", "frontend", "ng", "serve", "--configuration", "mock", "--port", "4301"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "ng",
+        "serve",
+        "--configuration",
+        "mock",
+        "--port",
+        "4301"
+      ],
       "cwd": "frontend",
       "port": 4301
+    },
+    {
+      "name": "backend-dev",
+      "runtimeExecutable": "C:/Program Files/Git/usr/bin/bash.exe",
+      "runtimeArgs": [
+        "-c",
+        "set -a && . ./.env && set +a && CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4201 /c/Users/hunglq26/.jdks/jdk-21.0.12.1+1/bin/java -jar backend/target/shopvi-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev --spring.data.redis.password=\"$REDIS_PASSWORD\""
+      ],
+      "port": 8080
+    },
+    {
+      "name": "backend-perf",
+      "runtimeExecutable": "C:/Program Files/Git/usr/bin/bash.exe",
+      "runtimeArgs": [
+        "-c",
+        "set -a && . ./.env && set +a && POSTGRES_DB=shopvi_perf CACHE_KEY_PREFIX=shopvi-perf: /c/Users/hunglq26/.jdks/jdk-21.0.12.1+1/bin/java -Xms1g -Xmx1g -jar backend/target/shopvi-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev --spring.data.redis.password=\"$REDIS_PASSWORD\" --app.search.alias=perf-products --logging.level.root=WARN"
+      ],
+      "port": 8080,
+      "autoPort": false
+    },
+    {
+      "name": "backend-perf-nocache",
+      "runtimeExecutable": "C:/Program Files/Git/usr/bin/bash.exe",
+      "runtimeArgs": [
+        "-c",
+        "set -a && . ./.env && set +a && POSTGRES_DB=shopvi_perf CACHE_KEY_PREFIX=shopvi-perf: /c/Users/hunglq26/.jdks/jdk-21.0.12.1+1/bin/java -Xms1g -Xmx1g -jar backend/target/shopvi-backend-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev --spring.data.redis.password=\"$REDIS_PASSWORD\" --app.search.alias=perf-products --logging.level.root=WARN --spring.cache.type=none"
+      ],
+      "port": 8080,
+      "autoPort": false
+    },
+    {
+      "name": "frontend-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "ng",
+        "serve",
+        "--port",
+        "4201"
+      ],
+      "cwd": "frontend",
+      "port": 4201,
+      "autoPort": false
     }
   ]
 }

@@ -11,9 +11,12 @@ class MinioConfig {
 
     @Bean
     MinioClient minioClient(MediaProperties properties) {
-        return MinioClient.builder()
+        MinioClient.Builder builder = MinioClient.builder()
                 .endpoint(properties.endpoint())
-                .credentials(properties.accessKey(), properties.secretKey())
-                .build();
+                .credentials(properties.accessKey(), properties.secretKey());
+        if (properties.region() != null) {
+            builder.region(properties.region());
+        }
+        return builder.build();
     }
 }

@@ -4,6 +4,7 @@ import com.shopvi.order.domain.Order;
 import com.shopvi.order.domain.OrderItem;
 import com.shopvi.order.domain.OrderStatus;
 import com.shopvi.order.domain.OrderStatusHistory;
+import com.shopvi.order.domain.OrderVoucher;
 import com.shopvi.order.domain.PaymentMethod;
 import com.shopvi.order.domain.PaymentStatus;
 import com.shopvi.order.domain.ShippingAddress;
@@ -21,10 +22,11 @@ public final class OrderViews {
     private OrderViews() {
     }
 
-    public record ItemView(Long variantId, Long productId, String productName, String productSlug, String variantName,
-                           String imageUrl, long unitPrice, int quantity, long lineTotal) {
+    /** @param id id dòng đơn (dùng khi đánh giá sản phẩm) */
+    public record ItemView(Long id, Long variantId, Long productId, String productName, String productSlug,
+                           String variantName, String imageUrl, long unitPrice, int quantity, long lineTotal) {
         static ItemView of(OrderItem i) {
-            return new ItemView(i.getVariantId(), i.getProductId(), i.getProductName(), i.getProductSlug(),
+            return new ItemView(i.getId(), i.getVariantId(), i.getProductId(), i.getProductName(), i.getProductSlug(),
                     i.getVariantName(), i.getImageUrl(), i.getUnitPrice(), i.getQuantity(), i.lineTotal());
         }
     }
@@ -57,14 +59,15 @@ public final class OrderViews {
                               long subtotal, long shippingFee, long discount, long total, PaymentMethod paymentMethod,
                               PaymentStatus paymentStatus, boolean cancellable, boolean awaitingPayment,
                               Instant paymentExpiresAt, ShippingAddress shippingAddress, String note,
-                              List<HistoryView> history, ShipmentView shipment, Instant createdAt, Instant updatedAt) {
+                              List<HistoryView> history, ShipmentView shipment, List<OrderVoucher> vouchers,
+                              Instant createdAt, Instant updatedAt) {
         static OrderDetail of(Order o, ShopSummary shop, Duration paymentTtl, ShipmentView shipment) {
             return new OrderDetail(o.getCode(), o.getCheckoutId(), o.getStatus(), shop,
                     o.getItems().stream().map(ItemView::of).toList(), o.getSubtotal(), o.getShippingFee(),
                     o.getDiscount(), o.getTotal(), o.getPaymentMethod(), o.getPaymentStatus(),
                     o.getStatus().isCancellableByBuyer(), o.isAwaitingPayment(), expiryOf(o, paymentTtl),
                     o.getShippingAddress(), o.getNote(), o.getHistory().stream().map(HistoryView::of).toList(),
-                    shipment, o.getCreatedAt(), o.getUpdatedAt());
+                    shipment, o.getVouchers(), o.getCreatedAt(), o.getUpdatedAt());
         }
     }
 

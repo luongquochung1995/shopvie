@@ -10,12 +10,16 @@ import { OrderApi } from '../../core/api/order.api';
 import { DivisionsService, formatAddressLine } from '../../shared/divisions.service';
 import { DateTimePipe } from '../../shared/pipes/date-time.pipe';
 import { VndPipe } from '../../shared/pipes/vnd.pipe';
+import { PaymentRedirect } from '../../shared/payment-redirect';
+import { Countdown } from '../../shared/ui/countdown';
 import { EmptyState } from '../../shared/ui/empty-state';
+import { ShipmentTimeline } from '../../shared/ui/shipment-timeline';
 import { OrderItems } from './order-items';
+import { OrderReviews } from './order-reviews';
 
 @Component({
   selector: 'app-order-detail',
-  imports: [RouterLink, TranslocoDirective, ButtonDirective, VndPipe, DateTimePipe, EmptyState, OrderItems],
+  imports: [RouterLink, TranslocoDirective, ButtonDirective, VndPipe, DateTimePipe, EmptyState, OrderItems, OrderReviews, ShipmentTimeline, Countdown],
   template: `
     <ng-container *transloco="let t">
       <a routerLink="/account/orders" class="mb-4 inline-flex items-center gap-1 text-sm text-gray-600 hover:text-brand-500">
@@ -25,8 +29,15 @@ import { OrderItems } from './order-items';
       @if (order(); as o) {
         <header class="mb-4 flex flex-col gap-1 border-b border-gray-100 pb-4 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span class="text-gray-600">{{ t('orders.code') }} <span class="font-mono text-xs text-gray-800">{{ o.code }}</span></span>
-          <span class="font-medium uppercase text-brand-500">{{ t('orderStatus.' + o.status) }}</span>
+          <span class="font-medium uppercase text-brand-500">{{ o.awaitingPayment ? t('orders.awaitingPayment') : t('orderStatus.' + o.status) }}</span>
         </header>
+
+        @if (o.awaitingPayment && o.paymentExpiresAt) {
+          <div class="mb-4 flex flex-col gap-2 rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between" role="status">
+            <span>{{ t('orders.awaitingHint') }} <app-countdown [until]="o.paymentExpiresAt" class="font-medium" /></span>
+            <button pButton type="button" size="small" [disabled]="paying()" (click)="pay(o)">{{ t('orders.payNow') }}</button>
+          </div>
+        }
 
         <div class="grid gap-6 md:grid-cols-2">
           <section [attr.aria-label]="t('orders.shippingAddress')">
@@ -55,6 +66,10 @@ import { OrderItems } from './order-items';
           </section>
         </div>
 
+        @if (o.shipment; as shipment) {
+          <div class="mt-6 rounded-sm border border-gray-100 p-4"><app-shipment-timeline [shipment]="shipment" /></div>
+        }
+
         <section class="mt-6 rounded-sm border border-gray-100">
           <h2 class="flex items-center gap-2 border-b border-gray-100 px-4 py-3 text-sm font-medium">
             <i class="pi pi-shop text-gray-500" aria-hidden="true"></i>{{ o.shop?.name }}
@@ -65,12 +80,28 @@ import { OrderItems } from './order-items';
             <dd class="text-right">{{ o.subtotal | vnd }}</dd>
             <dt class="text-gray-600">{{ t('checkout.shippingTotal') }}</dt>
             <dd class="text-right">{{ o.shippingFee | vnd }}</dd>
+            @for (v of o.vouchers; track v.code) {
+              <dt class="text-gray-600">{{ t(v.scope === 'SHOP' ? 'checkout.shopVoucher' : 'checkout.platformVoucher') }} {{ v.code }}</dt>
+              <dd class="text-right text-brand-500">-{{ v.amount | vnd }}</dd>
+            }
             <dt class="text-gray-600">{{ t('orders.total') }}</dt>
             <dd class="text-right text-xl font-medium text-brand-500">{{ o.total | vnd }}</dd>
             <dt class="text-gray-600">{{ t('checkout.payment') }}</dt>
             <dd class="text-right">{{ t('checkout.methods.' + o.paymentMethod) }}</dd>
+            <dt class="text-gray-600">{{ t('seller.orders.paymentStatus') }}</dt>
+            <dd class="text-right">{{ t('seller.orders.payment.' + o.paymentStatus) }}</dd>
           </dl>
         </section>
+
+        @if (o.status === 'DELIVERED') {
+          <div class="mt-4 flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <span class="text-sm text-gray-600">{{ t('orders.receivedHint') }}</span>
+            <button pButton type="button" [disabled]="completing()" (click)="complete(o)">{{ t('orders.received') }}</button>
+          </div>
+        }
+        @if (o.status === 'COMPLETED') {
+          <app-order-reviews [order]="o" />
+        }
 
         @if (o.cancellable) {
           <div class="mt-4 flex justify-end">
@@ -100,6 +131,9 @@ export default class OrderDetail {
   protected readonly order = signal<OrderDetailModel | null>(null);
   protected readonly notFound = signal(false);
   protected readonly cancelling = signal(false);
+  protected readonly paying = signal(false);
+  protected readonly completing = signal(false);
+  private readonly paymentRedirect = inject(PaymentRedirect);
   protected readonly addressLine = computed(() => {
     const o = this.order();
     return o ? formatAddressLine(this.provinces(), o.shippingAddress) : '';
@@ -120,6 +154,32 @@ export default class OrderDetail {
           }
         },
       });
+    });
+  }
+
+  protected pay(o: OrderDetailModel): void {
+    this.paying.set(true);
+    this.api.retryPayment(o.checkoutId).subscribe({
+      next: (link) => this.paymentRedirect.go(link.paymentUrl),
+      error: (err) => {
+        this.paying.set(false);
+        this.messages.add({ severity: 'error', summary: this.transloco.translate(errorKey(err)) });
+      },
+    });
+  }
+
+  protected complete(o: OrderDetailModel): void {
+    this.completing.set(true);
+    this.api.complete(o.code).subscribe({
+      next: (updated) => {
+        this.order.set(updated);
+        this.completing.set(false);
+        this.messages.add({ severity: 'success', summary: this.transloco.translate('orders.completed') });
+      },
+      error: (err) => {
+        this.completing.set(false);
+        this.messages.add({ severity: 'error', summary: this.transloco.translate(errorKey(err)) });
+      },
     });
   }
 

@@ -9,13 +9,14 @@ import { DivisionsService, formatAddressLine } from '../../../shared/divisions.s
 import { DateTimePipe } from '../../../shared/pipes/date-time.pipe';
 import { VndPipe } from '../../../shared/pipes/vnd.pipe';
 import { EmptyState } from '../../../shared/ui/empty-state';
+import { ShipmentTimeline } from '../../../shared/ui/shipment-timeline';
 import { OrderItems } from '../../account/order-items';
 import { SellerOrderActions } from './order-actions';
 
 /** Chi tiết đơn của shop: người nhận, lời nhắn, lịch sử trạng thái, thanh toán và thao tác xử lý. */
 @Component({
   selector: 'app-seller-order-detail',
-  imports: [RouterLink, TranslocoDirective, TranslocoPipe, VndPipe, DateTimePipe, EmptyState, OrderItems, SellerOrderActions],
+  imports: [RouterLink, TranslocoDirective, TranslocoPipe, VndPipe, DateTimePipe, EmptyState, OrderItems, SellerOrderActions, ShipmentTimeline],
   template: `
     <div *transloco="let t; prefix: 'seller.orders'" class="rounded-sm bg-white p-4 shadow-sm md:p-6">
       <a routerLink="/seller-center/orders" class="mb-4 inline-flex items-center gap-1 text-sm text-gray-600 hover:text-brand-500">
@@ -25,7 +26,7 @@ import { SellerOrderActions } from './order-actions';
       @if (order(); as o) {
         <header class="mb-4 flex flex-col gap-2 border-b border-gray-100 pb-4 text-sm sm:flex-row sm:items-center sm:justify-between">
           <span class="text-gray-600">{{ 'orders.code' | transloco }} <span class="font-mono text-xs text-gray-800">{{ o.code }}</span></span>
-          <span class="font-medium uppercase text-brand-500">{{ 'orderStatus.' + o.status | transloco }}</span>
+          <span class="font-medium uppercase text-brand-500">{{ (o.awaitingPayment ? 'orders.awaitingPayment' : 'orderStatus.' + o.status) | transloco }}</span>
         </header>
 
         <div class="grid gap-6 md:grid-cols-2">
@@ -54,6 +55,13 @@ import { SellerOrderActions } from './order-actions';
             </ol>
           </section>
         </div>
+
+        @if (o.awaitingPayment) {
+          <p class="mt-4 rounded-sm bg-amber-50 p-3 text-sm text-amber-900" role="status">{{ t('awaitingPaymentHint') }}</p>
+        }
+        @if (o.shipment; as shipment) {
+          <div class="mt-6 rounded-sm border border-gray-100 p-4"><app-shipment-timeline [shipment]="shipment" /></div>
+        }
 
         <section class="mt-6 rounded-sm border border-gray-100">
           <div class="px-4"><app-order-items [items]="o.items" /></div>

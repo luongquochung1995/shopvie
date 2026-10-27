@@ -6,10 +6,14 @@ import {
   CheckoutPreview,
   OrderStatus,
   OrderSummary,
+  PaymentMethod,
   ShopSummary,
 } from '../core/api/api.models';
 import { MockUser } from './mock-data';
 import { MockDb, MockOrder } from './mock-db';
+import { ONLINE_METHODS, PAYMENT_TTL_MS, setStatus, startPayment, zoneFee } from './mock-payment';
+import { quoteVouchers, redeemVouchers, releaseVouchers } from './mock-promotion';
+import { notifyNewOrder, notifyOrderStatus } from './mock-social';
 
 /**
  * Giỏ hàng, checkout, đơn mua của backend giả — cùng quy tắc với backend thật:
@@ -24,7 +28,8 @@ export const fail = (status: number, code: string, details: { field: string; mes
   body: { success: false, error: { code, message: code, details } },
 });
 
-const SHIPPING_FEE = 30_000;
+/** Phí ship ước tính khi chưa có địa chỉ nhận (có địa chỉ thì tính theo vùng). */
+const ESTIMATED_SHIPPING_FEE = 30_000;
 const MAX_CART_ITEMS = 200;
 const CANCELLABLE: OrderStatus[] = ['PENDING', 'CONFIRMED'];
 
@@ -112,7 +117,7 @@ export function removeCartItems(d: MockDb, userId: number, ids: number[]): MockR
 
 // ----- Checkout
 
-function quote(d: MockDb, userId: number, addressId?: number): MockResult | CheckoutPreview {
+function quote(d: MockDb, userId: number, addressId?: number, voucherCodes?: unknown): MockResult | CheckoutPreview {
   const address = d.addresses.find((a) => a.userId === userId && (addressId ? a.id === addressId : a.isDefault));
   if (addressId && !address) return fail(404, 'ADDRESS_NOT_FOUND');
   const selected = d.cart.filter((c) => c.userId === userId && c.selected);
@@ -127,33 +132,49 @@ function quote(d: MockDb, userId: number, addressId?: number): MockResult | Chec
       unitPrice: variant.price, quantity: c.quantity, stock: variant.stock, available: variant.stock >= c.quantity && d.isPurchasable(product),
       lineTotal: variant.price * c.quantity,
     };
-    const g = groups.get(product.shop.id) ?? { shop: product.shop, items: [], subtotal: 0, shippingFee: SHIPPING_FEE, discount: 0, total: 0 };
+    const g = groups.get(product.shop.id) ?? { shop: product.shop, items: [], subtotal: 0, shippingFee: 0, discount: 0, total: 0, vouchers: [] };
     g.items.push(line);
     g.subtotal += line.lineTotal;
-    g.total = g.subtotal + g.shippingFee;
     groups.set(product.shop.id, g);
+  }
+  for (const g of groups.values()) {
+    const origin = d.shops.find((s) => s.id === g.shop.id)?.pickupAddress?.provinceCode;
+    const quantity = g.items.reduce((n, l) => n + l.quantity, 0);
+    g.shippingFee = address ? zoneFee(origin, address.provinceCode, quantity) : ESTIMATED_SHIPPING_FEE;
+    g.total = g.subtotal + g.shippingFee;
   }
   if (groups.size === 0) return fail(422, 'NO_ITEMS_SELECTED');
   const list = [...groups.values()].sort((a, b) => a.shop.id - b.shop.id);
+  const vouchers = quoteVouchers(d, userId, voucherCodes, list);
+  if ('status' in vouchers) return vouchers;
+  for (const g of list) {
+    g.vouchers = vouchers.byShop.get(g.shop.id) ?? [];
+    g.discount = Math.min(g.vouchers.reduce((n, v) => n + v.amount, 0), g.subtotal + g.shippingFee);
+    g.total = g.subtotal + g.shippingFee - g.discount;
+  }
   const subtotal = list.reduce((s, g) => s + g.subtotal, 0);
   const shippingFee = list.reduce((s, g) => s + g.shippingFee, 0);
+  const discount = list.reduce((s, g) => s + g.discount, 0);
   return {
     address: address ? toSnapshot(address) : null,
-    groups: list, subtotal, shippingFee, discount: 0, total: subtotal + shippingFee, paymentMethods: ['COD'],
+    groups: list, subtotal, shippingFee, discount, total: subtotal + shippingFee - discount, paymentMethods: ['COD', ...ONLINE_METHODS],
     hasUnavailableItems: list.some((g) => g.items.some((l) => !l.available)),
+    voucherCodes: [...new Set(list.flatMap((g) => g.vouchers.map((v) => v.code)))],
   };
 }
 
-export function previewCheckout(d: MockDb, userId: number, addressId?: number): MockResult {
-  const q = quote(d, userId, addressId);
+export function previewCheckout(d: MockDb, userId: number, addressId?: number, voucherCodes?: unknown): MockResult {
+  const q = quote(d, userId, addressId, voucherCodes);
   return 'status' in q ? q : ok(q);
 }
 
 export function placeOrder(d: MockDb, user: MockUser, body: Record<string, unknown>): MockResult {
-  if (body['paymentMethod'] !== 'COD') return fail(422, 'PAYMENT_METHOD_NOT_SUPPORTED');
+  const method = body['paymentMethod'] as PaymentMethod;
+  if (method !== 'COD' && !ONLINE_METHODS.includes(method)) return fail(422, 'PAYMENT_METHOD_NOT_SUPPORTED');
+  const online = method !== 'COD';
   const addressId = Number(body['addressId']);
   if (!addressId) return fail(404, 'ADDRESS_NOT_FOUND');
-  const q = quote(d, user.id, addressId);
+  const q = quote(d, user.id, addressId, body['voucherCodes']);
   if ('status' in q) return q;
   const unavailable = q.groups.flatMap((g) => g.items).filter((l) => !l.available);
   if (unavailable.length) return fail(409, 'OUT_OF_STOCK', unavailable.map((l) => ({ field: 'variantId', message: String(l.variantId) })));
@@ -164,25 +185,31 @@ export function placeOrder(d: MockDb, user: MockUser, body: Record<string, unkno
   const { id: _addressId, ...shippingAddress } = q.address!;
   const checkoutId = crypto.randomUUID();
   const now = new Date().toISOString();
+  const paymentExpiresAt = online ? new Date(Date.now() + PAYMENT_TTL_MS).toISOString() : null;
   const placed = q.groups.map((g) => {
+    const id = d.nextId(d.orders);
     const order: MockOrder = {
-      id: d.nextId(d.orders), userId: user.id, code: crypto.randomUUID(), checkoutId, status: 'PENDING', shop: g.shop,
-      items: g.items.map((l) => ({
-        variantId: l.variantId, productId: l.productId, productName: l.productName, productSlug: l.productSlug,
+      id, userId: user.id, code: crypto.randomUUID(), checkoutId, status: 'PENDING', shop: g.shop,
+      items: g.items.map((l, i) => ({
+        id: id * 100 + i, variantId: l.variantId, productId: l.productId, productName: l.productName, productSlug: l.productSlug,
         variantName: l.variantName, imageUrl: l.imageUrl, unitPrice: l.unitPrice, quantity: l.quantity, lineTotal: l.lineTotal,
       })),
-      subtotal: g.subtotal, shippingFee: g.shippingFee, discount: 0, total: g.total, paymentMethod: 'COD',
-      paymentStatus: 'UNPAID', cancellable: true, shippingAddress,
+      subtotal: g.subtotal, shippingFee: g.shippingFee, discount: g.discount, total: g.total, paymentMethod: method,
+      vouchers: g.vouchers.map(({ code, type, scope, amount }) => ({ code, type, scope, amount })),
+      paymentStatus: 'UNPAID', cancellable: true, awaitingPayment: online, paymentExpiresAt, shipment: null, shippingAddress,
       note: notes[String(g.shop.id)]?.trim() || null,
       history: [{ fromStatus: null, toStatus: 'PENDING', note: null, createdAt: now }], createdAt: now, updatedAt: now,
     };
     d.orders.push(order);
+    redeemVouchers(d, user.id, order);
+    if (!online) notifyNewOrder(d, order);
     return { code: order.code, shopId: g.shop.id, total: order.total };
   });
   const bought = new Set(q.groups.flatMap((g) => g.items.map((l) => l.variantId)));
   d.cart = d.cart.filter((c) => !(c.userId === user.id && bought.has(c.variantId)));
+  const link = online ? startPayment(d, user.id, checkoutId, method, q.total, paymentExpiresAt!) : null;
   d.save();
-  return ok({ checkoutId, orders: placed, total: q.total }, 201);
+  return ok({ checkoutId, orders: placed, total: q.total, paymentUrl: link?.paymentUrl ?? null, paymentExpiresAt }, 201);
 }
 
 // ----- Orders
@@ -207,24 +234,33 @@ export function cancelOrder(d: MockDb, userId: number, code: string, reason?: st
   const o = d.orders.find((x) => x.userId === userId && x.code === code);
   if (!o) return fail(404, 'ORDER_NOT_FOUND');
   if (!CANCELLABLE.includes(o.status)) return fail(409, 'INVALID_ORDER_STATUS_TRANSITION');
-  const now = new Date().toISOString();
-  o.history.push({ fromStatus: o.status, toStatus: 'CANCELLED', note: reason?.trim() || null, createdAt: now });
-  o.status = 'CANCELLED';
-  o.cancellable = false;
-  o.updatedAt = now;
+  setStatus(o, 'CANCELLED', reason?.trim() || null);
   o.items.forEach((i) => i.variantId && d.adjustStock(i.variantId, i.quantity));
+  releaseVouchers(d, o.id);
+  notifyOrderStatus(d, o, 'buyer', reason?.trim() || null);
+  d.save();
+  return ok(toDetail(o));
+}
+
+/** Người mua xác nhận đã nhận hàng: DELIVERED → COMPLETED. */
+export function completeOrder(d: MockDb, userId: number, code: string): MockResult {
+  const o = d.orders.find((x) => x.userId === userId && x.code === code);
+  if (!o) return fail(404, 'ORDER_NOT_FOUND');
+  if (o.status !== 'DELIVERED') return fail(409, 'INVALID_ORDER_STATUS_TRANSITION');
+  setStatus(o, 'COMPLETED', null);
   d.save();
   return ok(toDetail(o));
 }
 
 // ----- helpers
 
-function toSummary({ id: _i, userId: _u, checkoutId: _c, shippingAddress: _a, note: _n, history: _h, updatedAt: _t, ...s }: MockOrder): OrderSummary {
+function toSummary({ id: _i, userId: _u, shippingAddress: _a, note: _n, history: _h, updatedAt: _t, shipment: _s, ...s }: MockOrder): OrderSummary {
   return s;
 }
 
 function toDetail({ id: _i, userId: _u, ...o }: MockOrder) {
-  return o;
+  // Đơn tạo trước Phase 5 (đã lưu localStorage) chưa có id món / voucher
+  return { ...o, vouchers: o.vouchers ?? [], items: o.items.map((item, i) => ({ ...item, id: item.id ?? _i * 100 + i })) };
 }
 
 function toSnapshot(a: MockDb['addresses'][number]) {

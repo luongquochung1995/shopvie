@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { ApiResponse, CategoryNode, Page, ProductCard, ProductDetail, ProductQuery } from './api.models';
+import { ApiResponse, Banner, CategoryNode, Page, ProductCard, ProductDetail, ProductQuery } from './api.models';
 
 @Injectable({ providedIn: 'root' })
 export class CatalogApi {
@@ -29,6 +29,11 @@ export class CatalogApi {
       }
     }
     return this.http.get<ApiResponse<Page<ProductCard>>>(`${this.base}/products`, { params }).pipe(map((r) => r.data));
+  }
+
+  /** Banner trang chủ đang hiển thị (admin quản lý). */
+  banners(): Observable<Banner[]> {
+    return this.http.get<ApiResponse<Banner[]>>(`${this.base}/banners`).pipe(map((r) => r.data));
   }
 
   product(slug: string): Observable<ProductDetail> {

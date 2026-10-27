@@ -1,22 +1,26 @@
 import { ChangeDetectionStrategy, Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
 import { ButtonDirective } from 'primeng/button';
 import { catchError, of } from 'rxjs';
 import { ProductCard } from '../../core/api/api.models';
 import { CatalogApi } from '../../core/api/catalog.api';
+import { Seo } from '../../core/seo/seo.service';
 import { ProductGrid } from '../../shared/ui/product-grid';
+import { FlashSaleSection } from './flash-sale-section';
 import { HomeBanner } from './home-banner';
 
 const PAGE_SIZE = 24;
 
 @Component({
   selector: 'app-home',
-  imports: [RouterLink, TranslocoDirective, ButtonDirective, HomeBanner, ProductGrid],
+  imports: [RouterLink, TranslocoDirective, ButtonDirective, HomeBanner, FlashSaleSection, ProductGrid],
   template: `
     <div *transloco="let t; prefix: 'home'" class="flex flex-col gap-4">
       <app-home-banner />
+
+      <app-flash-sale-section />
 
       <section class="rounded-sm bg-white shadow-sm" aria-labelledby="home-categories">
         <h2 id="home-categories" class="border-b border-gray-100 px-4 py-3 text-base font-medium uppercase text-gray-500">
@@ -41,7 +45,7 @@ const PAGE_SIZE = 24;
 
       <section aria-labelledby="home-suggest">
         <h2 id="home-suggest"
-            class="sticky top-0 z-10 mb-2 border-b-4 border-brand-500 bg-white py-3 text-center text-base font-medium uppercase text-brand-500 shadow-sm">
+            class="sticky top-[var(--app-header-h,0px)] z-10 mb-2 border-b-4 border-brand-500 bg-white py-3 text-center text-base font-medium uppercase text-brand-500 shadow-sm">
           {{ t('suggestions') }}
         </h2>
         @if (error()) {
@@ -78,6 +82,8 @@ export default class Home {
   protected readonly hasMore = computed(() => !this.error() && this.page() + 1 < this.totalPages());
 
   constructor() {
+    const t = inject(TranslocoService);
+    inject(Seo).set({ title: t.translate('title.home'), description: t.translate('seo.home'), path: '/' });
     this.fetch(0);
   }
 

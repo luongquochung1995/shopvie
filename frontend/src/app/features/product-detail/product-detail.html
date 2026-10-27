@@ -123,6 +123,10 @@
         <p class="truncate font-medium">{{ p.shop.name }}</p>
         <p class="text-sm text-gray-500"><i class="pi pi-star-fill text-amber-400" aria-hidden="true"></i> {{ t('shopRating', { rating: p.shop.ratingAvg }) }}</p>
       </div>
+      <button pButton type="button" size="small" [outlined]="true" class="ml-auto shrink-0" [disabled]="openingChat()"
+              (click)="chatWithShop(p.shop.id)">
+        <i class="pi pi-comments" aria-hidden="true"></i> {{ t('chatNow') }}
+      </button>
     </section>
 
     <!-- Chi tiết & mô tả -->
@@ -143,6 +147,8 @@
       <h2 class="mb-4 bg-gray-50 p-3 text-lg font-medium uppercase">{{ t('description') }}</h2>
       <p class="whitespace-pre-line px-3 text-sm leading-6">{{ p.description }}</p>
     </section>
+
+    <app-product-reviews [slug]="p.slug" />
   </article>
 }
 </ng-container>

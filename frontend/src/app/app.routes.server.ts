@@ -6,6 +6,7 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'account/**', renderMode: RenderMode.Client },
   { path: 'cart', renderMode: RenderMode.Client },
   { path: 'checkout/**', renderMode: RenderMode.Client },
+  { path: 'payment/**', renderMode: RenderMode.Client },
   { path: 'seller-center', renderMode: RenderMode.Client },
   { path: 'seller-center/**', renderMode: RenderMode.Client },
   { path: 'admin', renderMode: RenderMode.Client },

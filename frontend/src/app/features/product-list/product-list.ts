@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ButtonDirective } from 'primeng/button';
@@ -11,6 +10,7 @@ import { catchError, map, of, startWith, switchMap } from 'rxjs';
 import { Page, ProductCard, ProductSort } from '../../core/api/api.models';
 import { CatalogApi, findCategoryPath } from '../../core/api/catalog.api';
 import { LanguageService } from '../../core/i18n/language.service';
+import { Seo } from '../../core/seo/seo.service';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { ProductGrid } from '../../shared/ui/product-grid';
 
@@ -31,7 +31,7 @@ type ListState = { status: 'loading' } | { status: 'error' } | { status: 'ok'; p
 export default class ProductList {
   private readonly api = inject(CatalogApi);
   private readonly router = inject(Router);
-  private readonly title = inject(Title);
+  private readonly seo = inject(Seo);
   private readonly transloco = inject(TranslocoService);
   private readonly language = inject(LanguageService);
 
@@ -110,9 +110,13 @@ export default class ProductList {
       const c = this.category();
       this.language.lang(); // dịch lại tiêu đề khi đổi ngôn ngữ
       if (c) {
-        this.title.setTitle(this.transloco.translate('title.category', { name: c.name }));
+        this.seo.set({
+          title: this.transloco.translate('title.category', { name: c.name }),
+          description: this.transloco.translate('seo.category', { name: c.name }),
+          path: `/c/${c.slug}`,
+        });
       } else if (this.path() === null) {
-        this.title.setTitle(this.transloco.translate('title.notFound'));
+        this.seo.notFound(this.transloco.translate('title.notFound'), this.transloco.translate('productList.categoryNotFound'));
       }
     });
   }

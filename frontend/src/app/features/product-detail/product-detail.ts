@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { KeyValuePipe } from '@angular/common';
-import { Meta, Title } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoDirective, TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { MessageService } from 'primeng/api';
@@ -13,10 +12,13 @@ import { CartApi } from '../../core/api/cart.api';
 import { CatalogApi } from '../../core/api/catalog.api';
 import { AuthStore } from '../../core/auth/auth.store';
 import { CartStore } from '../../core/cart/cart.store';
+import { ChatStore } from '../../core/chat/chat.store';
 import { LanguageService } from '../../core/i18n/language.service';
 import { CompactCountPipe, formatVndRange } from '../../shared/pipes/vnd.pipe';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { RatingStars } from '../../shared/ui/rating-stars';
+import { Seo } from '../../core/seo/seo.service';
+import { ProductReviews } from './product-reviews';
 import {
   findVariant,
   imageFor,
@@ -35,21 +37,22 @@ type DetailState =
 
 @Component({
   selector: 'app-product-detail',
-  imports: [RouterLink, KeyValuePipe, TranslocoDirective, TranslocoPipe, ButtonDirective, CompactCountPipe, RatingStars, EmptyState],
+  imports: [RouterLink, KeyValuePipe, TranslocoDirective, TranslocoPipe, ButtonDirective, CompactCountPipe, RatingStars, EmptyState, ProductReviews],
   templateUrl: './product-detail.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export default class ProductDetail {
   private readonly api = inject(CatalogApi);
   private readonly messages = inject(MessageService);
-  private readonly title = inject(Title);
-  private readonly meta = inject(Meta);
+  private readonly seo = inject(Seo);
   private readonly transloco = inject(TranslocoService);
   private readonly language = inject(LanguageService);
   private readonly router = inject(Router);
   private readonly auth = inject(AuthStore);
   private readonly cartApi = inject(CartApi);
   private readonly cartStore = inject(CartStore);
+  private readonly chat = inject(ChatStore);
+  protected readonly openingChat = signal(false);
 
   readonly slug = input.required<string>();
 
@@ -113,10 +116,16 @@ export default class ProductDetail {
       const p = this.product();
       this.language.lang();
       if (p) {
-        this.title.setTitle(this.transloco.translate('title.product', { name: p.name }));
-        this.meta.updateTag({ name: 'description', content: (p.description ?? p.name).slice(0, 160) });
+        this.seo.set({
+          title: this.transloco.translate('title.product', { name: p.name }),
+          description: p.description || p.name,
+          path: `/p/${p.slug}`,
+          image: p.images[0] ?? null,
+          type: 'product',
+          jsonLd: productJsonLd(p),
+        });
       } else if (this.state().status === 'not-found') {
-        this.title.setTitle(this.transloco.translate('title.notFound'));
+        this.seo.notFound(this.transloco.translate('title.notFound'), this.transloco.translate('productDetail.notFound'));
       }
     });
   }
@@ -142,6 +151,22 @@ export default class ProductDetail {
   }
 
   /** Thêm SKU đang chọn vào giỏ; `buyNow` = thêm rồi chuyển tới giỏ hàng. */
+  /** Mở chat với shop (chưa đăng nhập → trang đăng nhập rồi quay lại). */
+  protected chatWithShop(shopId: number): void {
+    if (!this.auth.isLoggedIn()) {
+      void this.router.navigate(['/auth/login'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+    this.openingChat.set(true);
+    this.chat.openWithShop(shopId).subscribe({
+      next: () => this.openingChat.set(false),
+      error: (err) => {
+        this.openingChat.set(false);
+        this.messages.add({ severity: 'error', summary: this.transloco.translate(errorKey(err)) });
+      },
+    });
+  }
+
   protected addToCart(buyNow = false): void {
     const variant = this.selectedVariant();
     if (!variant) {
@@ -174,4 +199,28 @@ export default class ProductDetail {
   private toast(severity: string, key: string, params?: Record<string, unknown>): void {
     this.messages.add({ severity, summary: this.transloco.translate(key, params) });
   }
+}
+
+/** Dữ liệu có cấu trúc schema.org Product (rich result: giá, tình trạng hàng, điểm đánh giá). */
+function productJsonLd(p: ProductDetailModel): object {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.name,
+    image: p.images,
+    description: (p.description || p.name).slice(0, 5000),
+    sku: p.variants[0]?.sku,
+    brand: { '@type': 'Brand', name: p.shop.name },
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'VND',
+      lowPrice: p.minPrice,
+      highPrice: p.maxPrice,
+      offerCount: p.variants.length,
+      availability: p.totalStock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+    ...(p.ratingCount > 0
+      ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: p.ratingAvg, reviewCount: p.ratingCount } }
+      : {}),
+  };
 }

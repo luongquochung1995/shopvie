@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TranslocoDirective } from '@jsverse/transloco';
+import { TranslocoDirective, TranslocoService } from '@jsverse/transloco';
+import { Seo } from '../../core/seo/seo.service';
 import { EmptyState } from '../../shared/ui/empty-state';
 
 @Component({
@@ -13,4 +14,9 @@ import { EmptyState } from '../../shared/ui/empty-state';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export default class NotFound {}
+export default class NotFound {
+  constructor() {
+    const t = inject(TranslocoService);
+    inject(Seo).notFound(t.translate('title.notFound'), t.translate('notFound.description'));
+  }
+}

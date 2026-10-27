@@ -4,6 +4,7 @@ import static com.shopvi.catalog.infra.ProductSpecs.hasStatus;
 import static com.shopvi.catalog.infra.ProductSpecs.nameContains;
 import static com.shopvi.catalog.infra.ProductSpecs.ofShop;
 
+import com.shopvi.catalog.ProductChanged;
 import com.shopvi.catalog.application.CategoryTree.CategoryNode;
 import com.shopvi.catalog.application.ProductViews.CategoryRef;
 import com.shopvi.catalog.application.ProductViews.VariantView;
@@ -39,6 +40,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -66,6 +68,7 @@ public class SellerProductService {
     private final CategoryQueryService categoryQueryService;
     private final ShopApi shopApi;
     private final Clock clock;
+    private final ApplicationEventPublisher events;
 
     @Transactional(readOnly = true)
     public Page<SellerProductRow> list(Long sellerId, SellerProductFilter filter, Pageable pageable) {
@@ -88,7 +91,7 @@ public class SellerProductService {
         List<SellerProductRow> rows = page.getContent().stream().map(p -> {
             StockSummary s = stock.get(p.getId());
             return new SellerProductRow(p.getId(), p.getName(), p.getSlug(), thumbnails.get(p.getId()), p.getStatus(),
-                    p.getMinPrice(), p.getMaxPrice(), s == null ? 0 : s.getTotalStock().intValue(),
+                    p.getBanReason(), p.getMinPrice(), p.getMaxPrice(), s == null ? 0 : s.getTotalStock().intValue(),
                     s == null ? 0 : s.getVariantCount().intValue(), p.getSoldCount(), p.getRatingAvg(),
                     p.getCreatedAt(), p.getUpdatedAt());
         }).toList();
@@ -111,6 +114,7 @@ public class SellerProductService {
         saveVariants(shopId, product, n, List.of());
         saveImages(product.getId(), n.images());
         productRepository.flush();
+        events.publishEvent(new ProductChanged(product.getId()));
         return toDetail(product);
     }
 
@@ -124,6 +128,7 @@ public class SellerProductService {
         imageRepository.deleteByProductId(productId);
         saveImages(productId, n.images());
         productRepository.flush();
+        events.publishEvent(new ProductChanged(productId));
         return toDetail(product);
     }
 
@@ -132,12 +137,14 @@ public class SellerProductService {
         Product product = owned(shopApi.requireActiveShopIdOfOwner(sellerId), productId);
         product.setVisible(visible);
         productRepository.flush();
+        events.publishEvent(new ProductChanged(productId));
         return toDetail(product);
     }
 
     /** Xóa mềm: sản phẩm biến mất khỏi sàn và giỏ hàng; đơn cũ vẫn giữ snapshot. */
     public void delete(Long sellerId, Long productId) {
         owned(shopApi.requireShopIdOfOwner(sellerId), productId).softDelete(clock.instant());
+        events.publishEvent(new ProductChanged(productId));
     }
 
     private Product owned(Long shopId, Long productId) {
@@ -293,7 +300,8 @@ public class SellerProductService {
                 .map(ProductImage::getUrl).toList();
         List<CategoryRef> path = categoryQueryService.getTree().breadcrumb(p.getCategoryId()).stream()
                 .map(c -> new CategoryRef(c.id(), c.name(), c.slug())).toList();
-        return new SellerProductDetail(p.getId(), p.getName(), p.getSlug(), p.getStatus(), p.getCategoryId(), path,
+        return new SellerProductDetail(p.getId(), p.getName(), p.getSlug(), p.getStatus(), p.getBanReason(),
+                p.getCategoryId(), path,
                 p.getDescription(), p.getAttributes(), images, p.getVariantOptions(), variants, p.getMinPrice(),
                 p.getMaxPrice(), variants.stream().mapToInt(VariantView::stock).sum(), p.getSoldCount(),
                 p.getRatingAvg(), p.getRatingCount(), p.getCreatedAt(), p.getUpdatedAt());

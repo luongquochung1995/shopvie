@@ -29,6 +29,7 @@ public class OrderPaymentHandler {
 
     private final OrderRepository orderRepository;
     private final OrderStockReleaser stockReleaser;
+    private final OrderEvents orderEvents;
     private final PaymentApi paymentApi;
     private final TransactionTemplate tx;
     private final Clock clock;
@@ -41,7 +42,11 @@ public class OrderPaymentHandler {
                 log.error("Payment {} received for cancelled order {} — refund required", event.providerTxnId(),
                         order.getCode());
             }
+            boolean wasAwaiting = order.isAwaitingPayment();
             order.markPaid();
+            if (wasAwaiting) {
+                orderEvents.paid(order);
+            }
         }
     }
 
@@ -69,7 +74,7 @@ public class OrderPaymentHandler {
         int cancelled = 0;
         for (Order order : orders) {
             if (order.isAwaitingPayment() && order.getCreatedAt().isBefore(cutoff)) {
-                order.transitionTo(OrderStatus.CANCELLED, null, EXPIRED_NOTE);
+                orderEvents.transition(order, OrderStatus.CANCELLED, null, EXPIRED_NOTE);
                 stockReleaser.release(order);
                 cancelled++;
             }

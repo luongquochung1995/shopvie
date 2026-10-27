@@ -25,6 +25,7 @@ import { AuthStore } from './core/auth/auth.store';
 import { DEFAULT_LANG, LANGS, TranslocoJsonLoader } from './core/i18n/i18n.config';
 import { LanguageService } from './core/i18n/language.service';
 import { TranslatedTitleStrategy } from './core/i18n/translated-title.strategy';
+import { RealtimeService } from './core/realtime/realtime.service';
 import { ShopviPreset } from './core/theme/shopvi-preset';
 
 export const appConfig: ApplicationConfig = {
@@ -57,6 +58,7 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(AuthStore).init().subscribe();
     }),
+    { provide: RealtimeService, useClass: environment.realtime },
     MessageService,
     providePrimeNG({
       theme: {

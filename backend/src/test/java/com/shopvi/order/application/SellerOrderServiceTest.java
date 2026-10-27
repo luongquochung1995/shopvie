@@ -8,12 +8,14 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.shopvi.catalog.CatalogApi;
 import com.shopvi.common.exception.BusinessException;
 import com.shopvi.common.exception.ErrorCode;
+import com.shopvi.order.OrderStatusChanged;
 import com.shopvi.order.domain.Order;
 import com.shopvi.order.domain.OrderItem;
 import com.shopvi.order.domain.OrderStatus;
@@ -22,6 +24,7 @@ import com.shopvi.order.domain.PaymentStatus;
 import com.shopvi.order.domain.SellerAction;
 import com.shopvi.order.domain.ShippingAddress;
 import com.shopvi.order.infra.OrderRepository;
+import com.shopvi.promotion.PromotionApi;
 import com.shopvi.shipping.ShipmentStatus;
 import com.shopvi.shipping.ShippingApi;
 import com.shopvi.shipping.ShippingApi.CreateShipmentRequest;
@@ -33,6 +36,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -47,8 +51,9 @@ class SellerOrderServiceTest {
     private final ShopApi shops = mock(ShopApi.class);
     private final CatalogApi catalog = mock(CatalogApi.class);
     private final ShippingApi shipping = mock(ShippingApi.class);
-    private final SellerOrderService service = new SellerOrderService(orders, shops, new OrderStockReleaser(catalog),
-            shipping);
+    private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
+    private final SellerOrderService service = new SellerOrderService(orders, shops, new OrderStockReleaser(catalog, mock(PromotionApi.class)),
+            new OrderEvents(events), shipping);
     private Order order;
 
     @BeforeEach
@@ -94,6 +99,11 @@ class SellerOrderServiceTest {
 
         service.perform(SELLER, "code-1", SellerAction.SHIP, "GHN123");
         verify(shipping).recordManualStatus("code-1", ShipmentStatus.IN_TRANSIT, "GHN123");
+        // Mỗi lần đổi trạng thái phát một sự kiện (người mua nhận thông báo realtime)
+        ArgumentCaptor<OrderStatusChanged> changed = ArgumentCaptor.forClass(OrderStatusChanged.class);
+        verify(events, times(2)).publishEvent(changed.capture());
+        assertThat(changed.getAllValues()).extracting(OrderStatusChanged::to).containsExactly("CONFIRMED", "SHIPPING");
+        assertThat(changed.getAllValues().get(0).changedBy()).isEqualTo(SELLER);
     }
 
     @Test

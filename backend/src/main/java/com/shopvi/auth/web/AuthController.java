@@ -6,6 +6,7 @@ import com.shopvi.auth.config.AuthProperties;
 import com.shopvi.auth.web.AuthDtos.AuthResponse;
 import com.shopvi.auth.web.AuthDtos.LoginRequest;
 import com.shopvi.auth.web.AuthDtos.RegisterRequest;
+import com.shopvi.common.ratelimit.RateLimit;
 import com.shopvi.common.web.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -39,6 +40,7 @@ class AuthController {
 
     @Operation(summary = "Đăng ký tài khoản người mua và đăng nhập luôn")
     @PostMapping("/register")
+    @RateLimit("register")
     ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest req) {
         AuthResult result = authService.register(req.email(), req.password(), req.fullName(), req.phone());
         return withRefreshCookie(HttpStatus.CREATED, result);
@@ -46,12 +48,14 @@ class AuthController {
 
     @Operation(summary = "Đăng nhập bằng email + mật khẩu")
     @PostMapping("/login")
+    @RateLimit("login")
     ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody LoginRequest req) {
         return withRefreshCookie(HttpStatus.OK, authService.login(req.email(), req.password()));
     }
 
     @Operation(summary = "Đổi refresh token (cookie) lấy access token mới; refresh token được xoay vòng")
     @PostMapping("/refresh")
+    @RateLimit("refresh")
     ResponseEntity<ApiResponse<AuthResponse>> refresh(
             @CookieValue(name = REFRESH_COOKIE, required = false) String refreshToken) {
         return withRefreshCookie(HttpStatus.OK, authService.refresh(refreshToken));

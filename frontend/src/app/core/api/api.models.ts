@@ -210,6 +210,7 @@ export interface CheckoutGroup {
   shippingFee: number;
   discount: number;
   total: number;
+  vouchers: AppliedVoucher[];
 }
 
 export interface CheckoutPreview {
@@ -221,6 +222,8 @@ export interface CheckoutPreview {
   total: number;
   paymentMethods: string[];
   hasUnavailableItems: boolean;
+  /** Mã voucher đã áp được (chuẩn hóa chữ hoa). */
+  voucherCodes: string[];
 }
 
 export interface PlaceOrderRequest {
@@ -230,12 +233,56 @@ export interface PlaceOrderRequest {
   notes: Record<number, string>;
   /** Tổng tiền đã xem ở bước preview; khác thực tế → 409 PRICE_CHANGED */
   expectedTotal: number;
+  voucherCodes?: string[];
 }
 
 export interface PlaceOrderResult {
   checkoutId: string;
   orders: { code: string; shopId: number; total: number }[];
   total: number;
+  /** URL cổng thanh toán (null với COD) — chuyển người mua tới đây. */
+  paymentUrl: string | null;
+  paymentExpiresAt: string | null;
+}
+
+export type PaymentMethod = 'COD' | 'VNPAY' | 'MOMO';
+
+export type CheckoutPaymentStatus = 'NOT_REQUIRED' | 'PENDING' | 'FAILED' | 'PAID' | 'CANCELLED';
+
+export interface CheckoutPayment {
+  checkoutId: string;
+  paymentMethod: PaymentMethod;
+  status: CheckoutPaymentStatus;
+  total: number;
+  /** Hạn thanh toán (khi PENDING/FAILED). */
+  expiresAt: string | null;
+  orderCodes: string[];
+}
+
+export interface PaymentLink {
+  paymentUrl: string;
+  expiresAt: string;
+}
+
+// ===== Shipping =====
+
+export type ShipmentStatus = 'CREATED' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED' | 'CANCELLED';
+
+export interface ShipmentEvent {
+  status: ShipmentStatus;
+  description: string | null;
+  occurredAt: string;
+}
+
+export interface Shipment {
+  /** GHN | INTERNAL */
+  provider: string;
+  trackingCode: string;
+  status: ShipmentStatus;
+  fee: number | null;
+  expectedDeliveryAt: string | null;
+  /** Mới nhất trước. */
+  events: ShipmentEvent[];
 }
 
 // ===== Order =====
@@ -244,6 +291,7 @@ export const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
 
 export interface OrderItem {
+  id: number;
   variantId: number | null;
   productId: number;
   productName: string;
@@ -257,6 +305,7 @@ export interface OrderItem {
 
 export interface OrderSummary {
   code: string;
+  checkoutId: string;
   status: OrderStatus;
   shop: ShopSummary | null;
   items: OrderItem[];
@@ -267,6 +316,9 @@ export interface OrderSummary {
   paymentMethod: string;
   paymentStatus: string;
   cancellable: boolean;
+  /** Đơn online chưa thanh toán (thanh toán lại được tới paymentExpiresAt). */
+  awaitingPayment: boolean;
+  paymentExpiresAt: string | null;
   createdAt: string;
 }
 
@@ -287,10 +339,12 @@ export interface OrderHistoryEntry {
 }
 
 export interface OrderDetail extends OrderSummary {
-  checkoutId: string;
   shippingAddress: ShippingAddress;
   note: string | null;
   history: OrderHistoryEntry[];
+  /** Vận đơn (null khi shop chưa xác nhận). */
+  shipment: Shipment | null;
+  vouchers: OrderVoucher[];
   updatedAt: string;
 }
 
@@ -310,8 +364,18 @@ export interface MyShop {
   status: ShopStatus;
   /** Lý do admin từ chối (khi REJECTED). */
   rejectReason: string | null;
+  pickupAddress: PickupAddress | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** Địa chỉ lấy hàng của shop. */
+export interface PickupAddress {
+  name: string;
+  phone: string;
+  provinceCode: string;
+  wardCode: string;
+  detail: string;
 }
 
 export interface ShopInfoInput {
@@ -329,6 +393,8 @@ export interface AdminShop {
   description: string | null;
   status: ShopStatus;
   rejectReason: string | null;
+  /** Lý do khóa (khi BANNED). */
+  banReason: string | null;
   owner: { id: number; email: string; fullName: string } | null;
   createdAt: string;
   updatedAt: string;
@@ -343,6 +409,8 @@ export interface SellerProductRow {
   slug: string;
   thumbnailUrl: string | null;
   status: ProductStatus;
+  /** Lý do admin khóa (khi BANNED). */
+  banReason: string | null;
   minPrice: number;
   maxPrice: number;
   totalStock: number;
@@ -358,6 +426,7 @@ export interface SellerProductDetail {
   name: string;
   slug: string;
   status: ProductStatus;
+  banReason: string | null;
   categoryId: number;
   categoryPath: { id: number; name: string; slug: string }[];
   description: string | null;
@@ -418,6 +487,7 @@ export interface SellerOrderSummary {
   total: number;
   paymentMethod: string;
   paymentStatus: string;
+  awaitingPayment: boolean;
   receiverName: string;
   note: string | null;
   /** Thao tác seller làm được ở trạng thái hiện tại. */
@@ -428,6 +498,7 @@ export interface SellerOrderSummary {
 export interface SellerOrderDetail extends Omit<SellerOrderSummary, 'receiverName'> {
   shippingAddress: ShippingAddress;
   history: OrderHistoryEntry[];
+  shipment: Shipment | null;
   updatedAt: string;
 }
 
@@ -461,4 +532,318 @@ export interface SellerDashboard {
   /** Số đơn theo trạng thái (toàn thời gian). */
   statusCounts: OrderStatusCounts;
   topProducts: TopProduct[];
+}
+
+// ===== Search (Phase 5) =====
+
+export type SearchSort = 'RELEVANCE' | 'BEST_SELLING' | 'NEWEST' | 'PRICE_ASC' | 'PRICE_DESC';
+
+export interface SearchQuery {
+  q: string;
+  categoryId?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: SearchSort;
+  page?: number;
+  size?: number;
+}
+
+export interface SearchHit {
+  id: number;
+  name: string;
+  /** Tên với phần khớp bọc trong <mark> (đã escape HTML); null nếu không khớp tên. */
+  highlightedName: string | null;
+  slug: string;
+  thumbnailUrl: string | null;
+  minPrice: number;
+  maxPrice: number;
+  soldCount: number;
+  ratingAvg: number;
+  ratingCount: number;
+  shopName: string | null;
+}
+
+export interface Suggestion {
+  name: string;
+  slug: string;
+}
+
+// ===== Voucher (Phase 5) =====
+
+export type VoucherType = 'FIXED' | 'PERCENT' | 'FREESHIP';
+export type VoucherStatus = 'ACTIVE' | 'DISABLED';
+
+export interface Voucher {
+  id: number;
+  /** null = voucher sàn */
+  shopId: number | null;
+  code: string;
+  name: string;
+  type: VoucherType;
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  usageLimit: number;
+  usedCount: number;
+  perUserLimit: number;
+  startAt: string;
+  endAt: string;
+  status: VoucherStatus;
+}
+
+export interface VoucherInput {
+  code: string;
+  name: string;
+  type: VoucherType;
+  value: number;
+  minOrderValue: number;
+  maxDiscount: number | null;
+  usageLimit: number;
+  perUserLimit: number;
+  startAt: string;
+  endAt: string;
+}
+
+/** Voucher đã áp vào một shop khi thanh toán (voucher sàn được phân bổ cho từng shop). */
+export interface AppliedVoucher {
+  voucherId: number;
+  code: string;
+  type: VoucherType;
+  scope: 'SHOP' | 'PLATFORM';
+  amount: number;
+}
+
+export interface OrderVoucher {
+  code: string;
+  type: VoucherType;
+  scope: 'SHOP' | 'PLATFORM';
+  amount: number;
+}
+
+// ===== Review (Phase 5) =====
+
+export interface Review {
+  id: number;
+  orderItemId: number;
+  /** Tên đã che bớt, vd. "N*****n". */
+  reviewerName: string;
+  rating: number;
+  content: string | null;
+  media: string[];
+  variantName: string | null;
+  sellerReply: string | null;
+  sellerRepliedAt: string | null;
+  createdAt: string;
+}
+
+export interface ReviewSummary {
+  ratingAvg: number;
+  ratingCount: number;
+  /** Số đánh giá theo số sao ("1".."5"). */
+  counts: Partial<Record<string, number>>;
+  withMedia: number;
+}
+
+export interface ProductReviews extends Page<Review> {
+  summary: ReviewSummary;
+}
+
+export interface ReviewInput {
+  rating: number;
+  content: string | null;
+  media: string[];
+}
+
+export interface SellerReview {
+  id: number;
+  productId: number;
+  productName: string;
+  variantName: string | null;
+  reviewerName: string;
+  rating: number;
+  content: string | null;
+  media: string[];
+  sellerReply: string | null;
+  sellerRepliedAt: string | null;
+  createdAt: string;
+}
+
+// ===== Flash sale (Phase 5) =====
+
+export interface FlashSaleItem {
+  id: number;
+  variantId: number;
+  productId: number;
+  productName: string | null;
+  productSlug: string | null;
+  variantName: string | null;
+  imageUrl: string | null;
+  originalPrice: number;
+  salePrice: number;
+  quota: number;
+  remaining: number;
+  perUserLimit: number;
+}
+
+export interface FlashSale {
+  id: number;
+  name: string;
+  startAt: string;
+  endAt: string;
+  status: 'ACTIVE' | 'CANCELLED';
+  running: boolean;
+  items: FlashSaleItem[];
+}
+
+export interface FlashSaleInput {
+  name: string;
+  startAt: string;
+  endAt: string;
+  items: { variantId: number; salePrice: number; quota: number; perUserLimit: number }[];
+}
+
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'FAILED';
+
+export interface FlashSaleReservation {
+  reservationId: string;
+  itemId: number;
+  status: ReservationStatus;
+  orderCode: string | null;
+  reason: string | null;
+}
+
+// ===== Thông báo & chat (Phase 6) =====
+
+export type NotificationType =
+  | 'ORDER_STATUS'
+  | 'ORDER_CANCELLED_BY_BUYER'
+  | 'NEW_ORDER'
+  | 'PAYMENT_SUCCEEDED'
+  | 'SHOP_APPROVED'
+  | 'SHOP_REJECTED'
+  | 'SHOP_BANNED'
+  | 'SHOP_UNBANNED'
+  | 'PRODUCT_BANNED'
+  | 'PRODUCT_UNBANNED';
+
+export interface AppNotification {
+  id: number;
+  type: NotificationType;
+  /** Tham số hiển thị: orderCode, status, note, total, shopName, productName, reason... */
+  params: Record<string, string | number>;
+  /** Đường dẫn FE khi bấm vào. */
+  link: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationPage extends Page<AppNotification> {
+  unreadCount: number;
+}
+
+/** Tin realtime trên /user/queue/notifications. */
+export interface NotificationPush {
+  notification: AppNotification;
+  unreadCount: number;
+}
+
+export type ChatSide = 'BUYER' | 'SHOP';
+
+export interface Conversation {
+  id: number;
+  /** Phía của tôi trong hội thoại. */
+  side: ChatSide;
+  shopId: number;
+  /** Tên bên kia: shop (khi tôi là người mua) hoặc khách (khi tôi là shop). */
+  counterpart: string | null;
+  counterpartAvatar: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  unread: number;
+}
+
+export interface ChatMessage {
+  id: number;
+  conversationId: number;
+  senderId: number;
+  senderSide: ChatSide;
+  content: string;
+  createdAt: string;
+}
+
+export interface MessagePage {
+  /** Cũ → mới. */
+  items: ChatMessage[];
+  hasMore: boolean;
+  /** Tin cuối bên kia đã xem. */
+  otherLastReadMessageId: number | null;
+}
+
+/** Tin realtime trên /user/queue/chat. */
+export interface ChatPush {
+  type: 'MESSAGE' | 'READ';
+  conversationId: number;
+  message: ChatMessage | null;
+  /** MESSAGE: số chưa đọc của tôi trong hội thoại. */
+  unread: number | null;
+  /** READ: bên kia đã xem tới tin này. */
+  lastReadMessageId: number | null;
+}
+
+// ===== Quản trị (Phase 6) =====
+
+export type UserStatus = 'ACTIVE' | 'LOCKED';
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  phone: string | null;
+  fullName: string;
+  avatarUrl: string | null;
+  role: UserRole;
+  status: UserStatus;
+  lockReason: string | null;
+  createdAt: string;
+}
+
+export interface AdminProduct {
+  id: number;
+  name: string;
+  slug: string;
+  thumbnailUrl: string | null;
+  status: ProductStatus;
+  banReason: string | null;
+  shop: ShopSummary | null;
+  minPrice: number;
+  maxPrice: number;
+  soldCount: number;
+  ratingAvg: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Banner {
+  id: number;
+  title: string;
+  imageUrl: string;
+  linkUrl: string | null;
+  position: number;
+  active: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+}
+
+export type BannerInput = Omit<Banner, 'id'>;
+
+export interface AdminOverview {
+  days: number;
+  users: { total: number; byRole: Partial<Record<string, number>>; locked: number; newSince: number };
+  shops: Partial<Record<string, number>>;
+  products: Partial<Record<string, number>>;
+  orders: {
+    orders: number;
+    gmv: number;
+    byStatus: Partial<Record<string, number>>;
+    daily: { date: string; orders: number; gmv: number }[];
+  };
 }

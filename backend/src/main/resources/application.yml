@@ -32,6 +32,32 @@ spring:
         max-page-size: 100
   cache:
     type: redis
+    redis:
+      # Số liệu hit/miss cho Prometheus (cache_gets_total)
+      enable-statistics: true
+  # Phase 5: tìm kiếm & event bus
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    connection-timeout: 2s
+    socket-timeout: 10s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # Payload là JSON dạng byte: Spring Modulith đăng ký ByteArrayJsonMessageConverter dùng chung cho KafkaTemplate
+    # (gửi Message) và listener (tự chuyển JSON sang kiểu tham số của @KafkaListener)
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+    consumer:
+      group-id: shopvi
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+  modulith:
+    events:
+      externalization:
+        enabled: true
+      # Sự kiện chưa xử lý xong (vd. Kafka tạm lỗi) được gửi lại khi khởi động
+      republish-outstanding-events-on-restart: true
   servlet:
     multipart:
       max-file-size: 5MB
@@ -53,17 +79,47 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # P7-6: Prometheus scrape /actuator/prometheus (prod: cổng quản trị riêng, không mở ra Internet)
+        include: health,info,prometheus
   endpoint:
     health:
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: shopvi-backend
+    distribution:
+      # Histogram để tính p95/p99 độ trễ API trên Prometheus/Grafana
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 100ms,200ms,500ms,1s
+  observations:
+    key-values:
+      application: shopvi-backend
+
+# Log: dev dạng chữ kèm requestId; prod dạng JSON (ECS) — xem application-prod.yml
+logging:
+  pattern:
+    level: "%5p [%X{requestId:-}]"
 
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
 app:
+  # P7-3: hạn mức theo IP (chưa đăng nhập) hoặc theo user; token bucket trên Redis
+  rate-limit:
+    enabled: ${RATE_LIMIT_ENABLED:true}
+    rules:
+      login: { capacity: 10, period: 1m }
+      register: { capacity: 5, period: 10m }
+      refresh: { capacity: 30, period: 1m }
+      checkout: { capacity: 10, period: 1m }
+      chat: { capacity: 30, period: 1m }
+      review: { capacity: 10, period: 1m }
+  cache:
+    key-prefix: ${CACHE_KEY_PREFIX:shopvi:}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200}
   auth:
@@ -95,6 +151,10 @@ app:
       access-key: ${MOMO_ACCESS_KEY:}
       secret-key: ${MOMO_SECRET_KEY:}
       endpoint: ${MOMO_ENDPOINT:https://test-payment.momo.vn/v2/gateway/api/create}
+  search:
+    enabled: ${SEARCH_ENABLED:true}
+    alias: products
+    reindex-on-startup: true
   shipping:
     item-weight-grams: 500
     default-origin-province: "79"
@@ -115,4 +175,7 @@ app:
     access-key: ${MINIO_ROOT_USER:}
     secret-key: ${MINIO_ROOT_PASSWORD:}
     bucket: ${MEDIA_BUCKET:shopvi-media}
+    region: ${MEDIA_REGION:}
+    manage-bucket: ${MEDIA_MANAGE_BUCKET:true}
+    url-includes-bucket: ${MEDIA_URL_INCLUDES_BUCKET:true}
     max-file-size: 5MB
