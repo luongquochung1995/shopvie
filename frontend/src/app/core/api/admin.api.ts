@@ -10,6 +10,9 @@ import {
   ApiResponse,
   Banner,
   BannerInput,
+  AdminCategory,
+  CategoryInput,
+  CategoryNode,
   Page,
   ProductStatus,
   ShopStatus,
@@ -101,6 +104,25 @@ export class AdminApi {
 
   deleteBanner(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/banners/${id}`);
+  }
+
+  // ----- Danh mục
+
+  /** Cây danh mục mới nhất (không dùng bản đã nhớ trong phiên của CatalogApi). */
+  categoryTree(): Observable<CategoryNode[]> {
+    return this.http.get<ApiResponse<CategoryNode[]>>(`${environment.apiBaseUrl}/categories`).pipe(map((r) => r.data));
+  }
+
+  createCategory(body: CategoryInput): Observable<AdminCategory> {
+    return this.http.post<ApiResponse<AdminCategory>>(`${this.base}/categories`, body).pipe(map((r) => r.data));
+  }
+
+  updateCategory(id: number, body: Omit<CategoryInput, 'parentId'>): Observable<AdminCategory> {
+    return this.http.put<ApiResponse<AdminCategory>>(`${this.base}/categories/${id}`, body).pipe(map((r) => r.data));
+  }
+
+  deleteCategory(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/categories/${id}`);
   }
 
   // ----- Thống kê

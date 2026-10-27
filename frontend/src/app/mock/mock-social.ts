@@ -1,5 +1,5 @@
-import { AdminOverview, AdminProduct, AdminUser, AppNotification, Banner, ChatMessage, Conversation, NotificationType } from '../core/api/api.models';
-import { MockUser } from './mock-data';
+import { AdminOverview, AdminProduct, AdminUser, AppNotification, Banner, CategoryNode, ChatMessage, Conversation, NotificationType } from '../core/api/api.models';
+import { MockUser, slugify } from './mock-data';
 import { fail, MockResult, ok } from './mock-commerce';
 import { MockConversation, MockDb, MockOrder } from './mock-db';
 import { mockPush } from './mock-realtime';
@@ -349,4 +349,51 @@ function toAdminUser(u: MockUser): AdminUser {
     id: u.id, email: u.email, phone: u.phone, fullName: u.fullName, avatarUrl: u.avatarUrl, role: u.role,
     status: u.status ?? 'ACTIVE', lockReason: u.lockReason ?? null, createdAt: u.createdAt,
   };
+}
+
+// ----- Danh mục (chỉ trong bộ nhớ: tải lại trang về cây mặc định)
+
+const MAX_CATEGORY_LEVEL = 2;
+
+function allCategories(nodes: CategoryNode[]): CategoryNode[] {
+  return nodes.flatMap((n) => [n, ...allCategories(n.children)]);
+}
+
+const toAdminCategory = ({ children: _children, ...c }: CategoryNode) => c;
+
+export function saveCategory(d: MockDb, id: number | null, body: Record<string, unknown>): MockResult {
+  const name = typeof body['name'] === 'string' ? body['name'].trim() : '';
+  if (!name) return fail(400, 'VALIDATION_ERROR', [{ field: 'name', message: 'must not be blank' }]);
+  const rawSlug = typeof body['slug'] === 'string' && body['slug'].trim() ? body['slug'] : name;
+  const slug = slugify(rawSlug);
+  if (!slug) return fail(400, 'VALIDATION_ERROR', [{ field: 'slug', message: 'invalid' }]);
+  const all = allCategories(d.catalog.categories);
+  if (all.some((c) => c.slug === slug && c.id !== id)) return fail(409, 'CATEGORY_SLUG_EXISTS');
+  const position = Math.max(0, Number(body['position']) || 0);
+  const iconUrl = typeof body['iconUrl'] === 'string' && body['iconUrl'].trim() ? body['iconUrl'].trim() : null;
+  if (id !== null) {
+    const existing = all.find((c) => c.id === id);
+    if (!existing) return fail(404, 'CATEGORY_NOT_FOUND');
+    Object.assign(existing, { name, slug, position, iconUrl });
+    return ok(toAdminCategory(existing));
+  }
+  const parentId = typeof body['parentId'] === 'number' ? body['parentId'] : null;
+  const parent = parentId === null ? null : all.find((c) => c.id === parentId);
+  if (parentId !== null && !parent) return fail(404, 'CATEGORY_NOT_FOUND');
+  const level = parent ? parent.level + 1 : 0;
+  if (level > MAX_CATEGORY_LEVEL) return fail(422, 'CATEGORY_TOO_DEEP');
+  const created: CategoryNode = { id: d.nextId(all), parentId, name, slug, level, position, iconUrl, children: [] };
+  (parent ? parent.children : d.catalog.categories).push(created);
+  return ok(toAdminCategory(created), 201);
+}
+
+export function deleteCategory(d: MockDb, id: number): MockResult {
+  const target = allCategories(d.catalog.categories).find((c) => c.id === id);
+  if (!target) return fail(404, 'CATEGORY_NOT_FOUND');
+  if (target.children.length || d.catalog.products.some((p) => p.categoryId === id)) return fail(409, 'CATEGORY_NOT_EMPTY');
+  const siblings = target.parentId === null
+    ? d.catalog.categories
+    : allCategories(d.catalog.categories).find((c) => c.id === target.parentId)!.children;
+  siblings.splice(siblings.indexOf(target), 1);
+  return { status: 204, body: null };
 }

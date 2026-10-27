@@ -86,9 +86,40 @@ Ghi chú:
   trong khung CONNECT và chỉ đăng ký được `/user/queue/notifications`, `/user/queue/chat`; gửi tin chat qua REST `/api/v1/chat/**`.
   Origin của FE phải nằm trong `CORS_ALLOWED_ORIGINS` (mặc định `http://localhost:4200`).
 - Broker STOMP trong bộ nhớ — chỉ đúng khi chạy **một** instance backend.
-- Quản trị: đăng nhập `admin@shopvi.local` → menu tài khoản → **Quản trị** (tổng quan, shop, sản phẩm, tài khoản, voucher sàn, flash sale, banner).
+- Quản trị: đăng nhập `admin@shopvi.local` → menu tài khoản → **Quản trị** (tổng quan, shop, sản phẩm, danh mục, tài khoản, voucher sàn, flash sale, banner).
 - Chế độ mock (`npm run start:mock`): thông báo/chat realtime chạy giữa các tab cùng trình duyệt — mở một tab người mua và một tab seller để thử.
 - `.claude/launch.json` có sẵn cấu hình `backend-dev` (jar + `.env`) và `frontend-dev` (cổng 4201, cần thêm vào `CORS_ALLOWED_ORIGINS`).
+
+### Tối ưu & triển khai (Phase 7)
+
+- **SEO:** trang sản phẩm/danh mục/trang chủ render SSR kèm title, description, canonical, Open Graph, Twitter card, JSON-LD
+  (`core/seo/seo.service.ts`); trang không tồn tại trả HTTP 404. SSR server phục vụ `/robots.txt` và `/sitemap.xml`
+  (dữ liệu từ `GET /api/v1/seo/sitemap`, cache 10 phút). Biến môi trường SSR: `API_ORIGIN` (backend nội bộ), `SITE_URL` (URL công khai — host của nó cùng `localhost` là các host
+  được SSR; host khác rơi về render phía client). Nhiều tên miền thì đặt `NG_ALLOWED_HOSTS=a.com,b.com`.
+- **Cache Redis:** cây danh mục (1 giờ), chi tiết sản phẩm (10 phút, xóa khi sản phẩm đổi), trang danh sách (1 phút).
+  Khóa có tiền tố `CACHE_KEY_PREFIX` (mặc định `shopvi:`).
+- **Rate limit** (Bucket4j + Redis, `app.rate-limit.rules`): đăng nhập, đăng ký, refresh theo IP; checkout, chat, đánh giá theo user.
+  Vượt hạn mức → `429 TOO_MANY_REQUESTS` + `Retry-After`. Tắt bằng `RATE_LIMIT_ENABLED=false`.
+- **Bảo mật:** kết quả rà soát OWASP Top 10 ở [docs/security-review.md](docs/security-review.md).
+- **Load test:** `k6 run -e BASE_URL=http://localhost:8080 loadtest/read-apis.js` (500 RPS, ngưỡng p95 < 200ms) và `loadtest/checkout.js`;
+  không có k6 thì `node loadtest/node-bench.mjs --base http://localhost:8080 --rps 500 --seconds 30`. Migration **V11** thêm index cho trang danh sách.
+- **Giám sát:** `/actuator/prometheus` (histogram độ trễ HTTP); mỗi request có `X-Request-Id` (nằm trong mọi dòng log).
+  Profile `prod` ghi log JSON (ECS). Prometheus + Grafana + cảnh báo trong `deploy/monitoring/`.
+- **Production:** `backend/Dockerfile`, `frontend/Dockerfile` (multi-stage), `deploy/docker-compose.prod.yml` (nginx TLS + backend + SSR +
+  Postgres/Redis/ES/Kafka + Prometheus/Grafana), `deploy/nginx.conf`. Ảnh lưu S3 / Cloudflare R2 (cấu hình `app.media` trong
+  `application-prod.yml`), phục vụ qua CDN.
+
+### PostgreSQL không cần Docker (bản portable)
+
+Máy dev Windows không có Docker có thể chạy PostgreSQL 17 portable (bản zip "binaries" của EnterpriseDB), ví dụ trong `~/.shopvi-infra`:
+
+```bash
+pgsql/bin/initdb -D pgdata -U postgres --pwfile=pg-superuser.txt --auth=scram-sha-256 --encoding=UTF8 --locale=C
+pgsql/bin/pg_ctl -D pgdata -o "-p 5433 -c listen_addresses=localhost" -l pgdata/server.log start
+pgsql/bin/psql -h localhost -p 5433 -U postgres -c "CREATE ROLE shopvi LOGIN PASSWORD '<POSTGRES_PASSWORD>'" -c "CREATE DATABASE shopvi OWNER shopvi"
+```
+
+Đặt `DB_PORT=5433` trong `.env` (cổng 5432 có thể đang bị PostgreSQL khác chiếm). Bảng do Flyway tạo khi backend khởi động; profile `dev` seed dữ liệu mẫu khi DB trống.
 
 ### Chạy khi chưa có Redis/MinIO
 

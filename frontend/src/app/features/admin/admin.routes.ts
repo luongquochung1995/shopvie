@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import AdminLayout from './admin-layout';
 
-/** Khu quản trị (role ADMIN, lazy): tổng quan, duyệt/khóa shop, hậu kiểm sản phẩm, tài khoản, voucher sàn, flash sale, banner. */
+/** Khu quản trị (role ADMIN, lazy): tổng quan, duyệt/khóa shop, hậu kiểm sản phẩm, danh mục, tài khoản, voucher sàn, flash sale, banner. */
 export default [
   {
     path: '',
@@ -13,6 +13,7 @@ export default [
       { path: 'users', loadComponent: () => import('./user-admin'), title: 'title.adminUsers' },
       { path: 'vouchers', loadComponent: () => import('../promotion/voucher-manager'), data: { scope: 'admin' }, title: 'title.adminVouchers' },
       { path: 'flash-sales', loadComponent: () => import('./flash-sale-admin'), title: 'title.adminFlashSales' },
+      { path: 'categories', loadComponent: () => import('./category-admin'), title: 'title.adminCategories' },
       { path: 'banners', loadComponent: () => import('./banner-admin'), title: 'title.adminBanners' },
     ],
   },

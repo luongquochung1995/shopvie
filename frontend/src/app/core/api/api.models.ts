@@ -74,6 +74,18 @@ export interface CategoryNode {
   children: CategoryNode[];
 }
 
+/** Danh mục trả về từ API quản trị (không kèm danh mục con). */
+export type AdminCategory = Omit<CategoryNode, 'children'>;
+
+/** Tạo/sửa danh mục (admin): slug trống → backend sinh từ tên; parentId chỉ dùng khi tạo. */
+export interface CategoryInput {
+  parentId: number | null;
+  name: string;
+  slug: string | null;
+  position: number;
+  iconUrl: string | null;
+}
+
 export interface ProductCard {
   id: number;
   name: string;

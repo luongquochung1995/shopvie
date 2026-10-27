@@ -302,6 +302,11 @@ function adminRoute(d: MockDb, m: string, path: string, body: Record<string, unk
     if (m === 'PUT') return social.saveBanner(d, Number(match[1]), body);
     if (m === 'DELETE') return social.deleteBanner(d, Number(match[1]));
   }
+  if (path === '/admin/categories' && m === 'POST') return social.saveCategory(d, null, body);
+  if ((match = path.match(/^\/admin\/categories\/(\d+)$/))) {
+    if (m === 'PUT') return social.saveCategory(d, Number(match[1]), body);
+    if (m === 'DELETE') return social.deleteCategory(d, Number(match[1]));
+  }
   if (path === '/admin/stats' && m === 'GET') return social.overview(d, query);
   if (path === '/admin/vouchers' && m === 'GET') return promotion.listVouchers(d, null, query);
   if (path === '/admin/vouchers' && m === 'POST') return promotion.createVoucher(d, null, body);
