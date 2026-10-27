@@ -250,7 +250,7 @@ reviews(id, order_item_id FK UNIQUE, user_id FK, product_id FK, rating SMALLINT 
 
 ## 7. Môi trường dev
 
-`docker-compose.yml` cần có các service: `postgres:17`, `redis:7`, `minio/minio`
+`docker-compose.yml` cần có các service: `postgres:17`, `redis:7`, MinIO (`pgsty/minio` — `minio/minio` đã bị gỡ khỏi Docker Hub, đổi theo quyết định của người dùng 2026-10-27)
 (Phase 5 thêm `elasticsearch:8`, `kafka` KRaft). Dùng named volume, healthcheck cho từng service.
 
 `.env.example`:

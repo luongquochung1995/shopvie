@@ -45,7 +45,9 @@ public class TestcontainersConfiguration {
 
     @Bean
     MinIOContainer minioContainer() {
-        return new MinIOContainer(DockerImageName.parse("minio/minio"))
+        // minio/minio đã bị gỡ khỏi Docker Hub: dùng fork pgsty/minio (cùng lệnh / API), ghim phiên bản
+        return new MinIOContainer(DockerImageName.parse("pgsty/minio:RELEASE.2026-08-04T00-00-00Z")
+                .asCompatibleSubstituteFor("minio/minio"))
                 .withUserName("minio")
                 .withPassword("minio-secret-123");
     }
