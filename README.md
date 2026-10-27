@@ -109,6 +109,18 @@ Ghi chú:
   Postgres/Redis/ES/Kafka + Prometheus/Grafana), `deploy/nginx.conf`. Ảnh lưu S3 / Cloudflare R2 (cấu hình `app.media` trong
   `application-prod.yml`), phục vụ qua CDN.
 
+### PostgreSQL không cần Docker (bản portable)
+
+Máy dev Windows không có Docker có thể chạy PostgreSQL 17 portable (bản zip "binaries" của EnterpriseDB), ví dụ trong `~/.shopvi-infra`:
+
+```bash
+pgsql/bin/initdb -D pgdata -U postgres --pwfile=pg-superuser.txt --auth=scram-sha-256 --encoding=UTF8 --locale=C
+pgsql/bin/pg_ctl -D pgdata -o "-p 5433 -c listen_addresses=localhost" -l pgdata/server.log start
+pgsql/bin/psql -h localhost -p 5433 -U postgres -c "CREATE ROLE shopvi LOGIN PASSWORD '<POSTGRES_PASSWORD>'" -c "CREATE DATABASE shopvi OWNER shopvi"
+```
+
+Đặt `DB_PORT=5433` trong `.env` (cổng 5432 có thể đang bị PostgreSQL khác chiếm). Bảng do Flyway tạo khi backend khởi động; profile `dev` seed dữ liệu mẫu khi DB trống.
+
 ### Chạy khi chưa có Redis/MinIO
 
 Cache tự bỏ qua lỗi Redis, nhưng nên tắt hẳn để tránh chờ timeout:
